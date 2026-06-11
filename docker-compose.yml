@@ -14,7 +14,7 @@ services:
     networks:
       - internal
 
-  api:
+  erpura_api:
     build:
       context: ./api
       dockerfile: Dockerfile
@@ -41,7 +41,7 @@ services:
     container_name: erpura_frontend
     restart: unless-stopped
     depends_on:
-      - api
+      - erpura_api
     networks:
       - internal
       - coolify
