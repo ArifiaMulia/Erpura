@@ -1535,6 +1535,175 @@ window.OdooAnalyzer.Visualizers = (function () {
     return `<div style="${S.statItem}"><div style="${S.statValue}">${value}</div><div style="${S.statLabel}">${label}</div></div>`;
   }
 
+  /**
+   * Export analysis result to Excel using SheetJS.
+   * Creates a multi-sheet workbook with:
+   * 1. Summary (Ringkasan)
+   * 2. Issues (Daftar Masalah)
+   * 3. Models (Struktur Model)
+   * 
+   * @param {Object} result - AnalysisResult
+   */
+  function exportExcel(result) {
+    if (!result || typeof XLSX === 'undefined') {
+      console.warn('XLSX library not loaded or result empty.');
+      return;
+    }
+
+    try {
+      const wb = XLSX.utils.book_new();
+      const lang = localStorage.getItem('lang') || 'id';
+
+      // --------------------------------------------------------
+      // Sheet 1: Summary
+      // --------------------------------------------------------
+      const summaryRows = [
+        [lang === 'en' ? 'Erpura Analysis Summary' : 'Ringkasan Analisis Erpura'],
+        [],
+        [lang === 'en' ? 'Metric' : 'Metrik', lang === 'en' ? 'Value' : 'Nilai'],
+        [lang === 'en' ? 'Health Score' : 'Skor Kesehatan', `${result.stats?.healthScore || 0}/100`],
+        [lang === 'en' ? 'Odoo Version Detected' : 'Versi Odoo Terdeteksi', result.stats?.odooVersionDetected || 'N/A'],
+        [lang === 'en' ? 'Total Modules' : 'Total Modul', result.stats?.totalModules || 0],
+        [lang === 'en' ? 'Total Models' : 'Total Model', result.stats?.totalModels || 0],
+        [lang === 'en' ? 'Total Fields' : 'Total Field', result.stats?.totalFields || 0],
+        [lang === 'en' ? 'Total Methods' : 'Total Method', result.stats?.totalMethods || 0],
+        [lang === 'en' ? 'Total Views' : 'Total View', result.stats?.totalViews || 0],
+        [],
+        [lang === 'en' ? 'Issues by Severity' : 'Masalah Berdasarkan Tingkat Keparahan', ''],
+        [lang === 'en' ? 'Critical' : 'Kritis', result.stats?.issuesBySeverity?.critical || 0],
+        [lang === 'en' ? 'Warning' : 'Peringatan', result.stats?.issuesBySeverity?.warning || 0],
+        [lang === 'en' ? 'Info' : 'Info', result.stats?.issuesBySeverity?.info || 0],
+      ];
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+      
+      // Auto fit columns roughly
+      wsSummary['!cols'] = [{ wch: 30 }, { wch: 20 }];
+      XLSX.utils.book_append_sheet(wb, wsSummary, lang === 'en' ? 'Summary' : 'Ringkasan');
+
+      // --------------------------------------------------------
+      // Sheet 2: Issues
+      // --------------------------------------------------------
+      const issuesHeaders = lang === 'en'
+        ? ['ID', 'Severity', 'Category', 'Title', 'Description', 'File', 'Line', 'Suggestion']
+        : ['ID', 'Keparahan', 'Kategori', 'Judul', 'Deskripsi', 'File', 'Baris', 'Saran'];
+      
+      const issuesRows = [issuesHeaders];
+      
+      if (Array.isArray(result.issues)) {
+        result.issues.forEach(issue => {
+          const ruleId = issue.ruleId || issue.id?.split('_')[0];
+          let title = issue.title;
+          let description = issue.description;
+          let suggestion = issue.suggestion || issue.recommendation;
+
+          if (lang === 'en' && window.OdooAnalyzer.RULE_TRANSLATIONS?.[ruleId]) {
+            const t = window.OdooAnalyzer.RULE_TRANSLATIONS[ruleId];
+            title = t.title;
+            description = t.description;
+            suggestion = t.suggestion;
+          }
+
+          issuesRows.push([
+            issue.ruleId || issue.id || '',
+            issue.severity || '',
+            issue.category || '',
+            title || '',
+            description || '',
+            issue.file || '',
+            issue.line || '',
+            suggestion || ''
+          ]);
+        });
+      }
+      
+      const wsIssues = XLSX.utils.aoa_to_sheet(issuesRows);
+      wsIssues['!cols'] = [
+        { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 25 }, 
+        { wch: 45 }, { wch: 30 }, { wch: 8 }, { wch: 45 }
+      ];
+      XLSX.utils.book_append_sheet(wb, wsIssues, lang === 'en' ? 'Issues' : 'Masalah');
+
+      // --------------------------------------------------------
+      // Sheet 3: Models Structure
+      // --------------------------------------------------------
+      const modelsHeaders = lang === 'en'
+        ? ['Module', 'Model Name', 'Python Class', 'Inherits From', 'Fields Count', 'Methods Count', 'File']
+        : ['Modul', 'Nama Model', 'Python Class', 'Inherit Dari', 'Jumlah Field', 'Jumlah Method', 'File'];
+
+      const modelsRows = [modelsHeaders];
+
+      if (Array.isArray(result.modules)) {
+        result.modules.forEach(mod => {
+          if (Array.isArray(mod.models)) {
+            mod.models.forEach(model => {
+              const inherits = Array.isArray(model.inherit)
+                ? model.inherit.join(', ')
+                : (model.inherit || '');
+
+              modelsRows.push([
+                mod.name || '',
+                model.name || '',
+                model.className || '',
+                inherits,
+                Array.isArray(model.fields) ? model.fields.length : 0,
+                Array.isArray(model.methods) ? model.methods.length : 0,
+                model.file || ''
+              ]);
+            });
+          }
+        });
+      }
+
+      const wsModels = XLSX.utils.aoa_to_sheet(modelsRows);
+      wsModels['!cols'] = [
+        { wch: 15 }, { wch: 25 }, { wch: 25 }, { wch: 25 },
+        { wch: 12 }, { wch: 12 }, { wch: 35 }
+      ];
+      XLSX.utils.book_append_sheet(wb, wsModels, lang === 'en' ? 'Models' : 'Daftar Model');
+
+      // Write File
+      XLSX.writeFile(wb, 'Erpura_Analysis_Report.xlsx');
+    } catch (err) {
+      console.error('[Visualizers] exportExcel error:', err);
+      throw err;
+    }
+  }
+
+  /**
+   * Generate a Mermaid flowchart TD representing Odoo module dependencies.
+   * 
+   * @param {Array} modules - Array of OdooModule objects
+   * @returns {string} Mermaid flowchart code.
+   */
+  function generateModuleDependencyGraph(modules) {
+    if (!Array.isArray(modules) || modules.length === 0) {
+      return 'flowchart TD\n    A([No Module Data])';
+    }
+
+    const lines = ['flowchart TD'];
+    const declaredModules = new Set(modules.map(m => m.name));
+
+    // Style variables for nodes
+    lines.push('    classDef default fill:#1a1a3e,stroke:#7c5cfc,stroke-width:1px,color:#e8e8f0;');
+    lines.push('    classDef external fill:#12122a,stroke:#8888a8,stroke-width:1px,color:#8888a8,stroke-dasharray: 5 5;');
+
+    modules.forEach(mod => {
+      const safeName = (mod.name || 'unknown').replace(/[^a-zA-Z0-9_]/g, '_');
+      lines.push(`    ${safeName}[${sanitizeLabel(mod.name)}]`);
+      
+      const depends = Array.isArray(mod.depends) ? mod.depends : [];
+      depends.forEach(dep => {
+        const safeDep = dep.replace(/[^a-zA-Z0-9_]/g, '_');
+        if (!declaredModules.has(dep)) {
+          lines.push(`    ${safeDep}[${sanitizeLabel(dep)}]:::external`);
+        }
+        lines.push(`    ${safeName} --> ${safeDep}`);
+      });
+    });
+
+    return lines.join('\n');
+  }
+
   // ============================================================
   // Public API
   // ============================================================
@@ -1546,7 +1715,9 @@ window.OdooAnalyzer.Visualizers = (function () {
     generateModelClassDiagram,
     renderDiagram,
     generateFullReport,
-    postProcessSVG: _postProcessSVG
+    postProcessSVG: _postProcessSVG,
+    exportExcel,
+    generateModuleDependencyGraph
   };
 
 })();

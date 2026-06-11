@@ -866,9 +866,14 @@ window.OdooAnalyzer.UI = (function () {
           </div>
         ` : ''}
 
-        <button class="btn btn-sm btn-accent" data-action="view-fix" data-issue-id="${_escapeHtml(issue.id || issue.ruleId || '')}">
-          ${labels.viewFix}
-        </button>
+        <div style="display: flex; gap: 8px; margin-top: 12px;">
+          <button class="btn btn-sm btn-accent" data-action="view-fix" data-issue-id="${_escapeHtml(issue.id || '')}">
+            ${labels.viewFix}
+          </button>
+          <button class="btn btn-sm btn-secondary" data-action="open-comments" data-issue-id="${_escapeHtml(issue.id || '')}" style="display: flex; align-items: center; gap: 4px;">
+            ${lang === 'en' ? '💬 Discussion' : '💬 Diskusi'}
+          </button>
+        </div>
       </div>
     `;
 
@@ -1770,6 +1775,165 @@ window.OdooAnalyzer.UI = (function () {
    * @param {string} filename
    * @private
    */
+  /**
+   * Render active user details in the header widget.
+   * @param {Object|null} user
+   */
+  function renderUserWidget(user) {
+    const widget = document.getElementById('user-profile-widget');
+    const nameEl = document.getElementById('user-name');
+    const roleEl = document.getElementById('user-role');
+    const avatarEl = document.getElementById('user-avatar');
+
+    if (widget) {
+      if (user) {
+        widget.style.display = 'flex';
+        if (nameEl) nameEl.textContent = user.name || '';
+        if (roleEl) {
+          const lang = localStorage.getItem('lang') || 'id';
+          const rolesMap = {
+            Admin: lang === 'en' ? 'Admin' : 'Admin',
+            Reviewer: lang === 'en' ? 'Reviewer' : 'Peninjau',
+            Developer: lang === 'en' ? 'Developer' : 'Pengembang',
+            Viewer: lang === 'en' ? 'Viewer' : 'Pelihat'
+          };
+          roleEl.textContent = rolesMap[user.role] || user.role || '';
+        }
+        if (avatarEl) {
+          avatarEl.src = user.avatar || 'https://open.larksuite.com/static-resource/v1/37bb~no_avatar.png';
+        }
+      } else {
+        widget.style.display = 'none';
+      }
+    }
+  }
+
+  /**
+   * Render users and audit logs inside the Admin Console.
+   * @param {Array} users
+   * @param {Array} logs
+   */
+  function renderAdminConsole(users, logs) {
+    const userListContainer = document.getElementById('admin-user-list');
+    const logsContainer = document.getElementById('admin-audit-logs');
+
+    if (userListContainer) {
+      userListContainer.innerHTML = '';
+      if (Array.isArray(users) && users.length > 0) {
+        users.forEach(u => {
+          const tr = document.createElement('tr');
+          tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+          
+          // Generate select options for roles
+          const roles = ['Admin', 'Reviewer', 'Developer', 'Viewer'];
+          const selectOptions = roles.map(r => 
+            `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`
+          ).join('');
+
+          tr.innerHTML = `
+            <td style="padding: 10px 8px; display: flex; align-items: center; gap: 8px;">
+              <img src="${u.avatar || 'https://open.larksuite.com/static-resource/v1/37bb~no_avatar.png'}" style="width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);">
+              <span>${_escapeHtml(u.name)}</span>
+            </td>
+            <td style="padding: 10px 8px; color: #8888a8;">${_escapeHtml(u.email || '-')}</td>
+            <td style="padding: 10px 8px;">
+              <span class="badge badge-${_getSeverityClass(u.role === 'Admin' ? 'critical' : (u.role === 'Reviewer' ? 'warning' : 'info'))}" style="font-size: 0.7rem;">
+                ${u.role}
+              </span>
+            </td>
+            <td style="padding: 10px 8px; text-align: right;">
+              <select class="admin-role-select" data-user-id="${u.id}" style="background: #12122a; color: #e8e8f0; border: 1px solid rgba(255,255,255,0.15); padding: 4px; border-radius: 4px; font-size: 0.8rem;">
+                ${selectOptions}
+              </select>
+            </td>
+          `;
+
+          // Attach onchange handler directly
+          const select = tr.querySelector('.admin-role-select');
+          if (select) {
+            select.addEventListener('change', (e) => {
+              const userId = e.target.getAttribute('data-user-id');
+              const newRole = e.target.value;
+              if (window.OdooAnalyzer.App && typeof window.OdooAnalyzer.App.updateUserRole === 'function') {
+                window.OdooAnalyzer.App.updateUserRole(userId, newRole);
+              }
+            });
+          }
+
+          userListContainer.appendChild(tr);
+        });
+      } else {
+        userListContainer.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #8888a8;">Tidak ada pengguna.</td></tr>';
+      }
+    }
+
+    if (logsContainer) {
+      logsContainer.innerHTML = '';
+      if (Array.isArray(logs) && logs.length > 0) {
+        logs.forEach(log => {
+          const tr = document.createElement('tr');
+          tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+          const timeStr = new Date(log.timestamp).toLocaleString('id-ID');
+          tr.innerHTML = `
+            <td style="padding: 8px; color: #8888a8; font-size: 0.75rem;">${timeStr}</td>
+            <td style="padding: 8px; font-weight: 500;">${_escapeHtml(log.user_name || 'System')}</td>
+            <td style="padding: 8px;"><span style="color: #00d4aa;">${_escapeHtml(log.action)}</span></td>
+            <td style="padding: 8px; color: #b8b8d0; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${_escapeHtml(log.details)}">${_escapeHtml(log.details)}</td>
+          `;
+          logsContainer.appendChild(tr);
+        });
+      } else {
+        logsContainer.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #8888a8;">Tidak ada catatan audit.</td></tr>';
+      }
+    }
+  }
+
+  /**
+   * Render discussion comments inside the drawer.
+   * @param {Array} comments
+   */
+  function renderComments(comments) {
+    const listContainer = document.getElementById('drawer-comments-list');
+    if (!listContainer) return;
+    listContainer.innerHTML = '';
+    
+    if (Array.isArray(comments) && comments.length > 0) {
+      comments.forEach(comment => {
+        const commentDiv = document.createElement('div');
+        commentDiv.style.background = 'rgba(255, 255, 255, 0.03)';
+        commentDiv.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+        commentDiv.style.padding = '10px';
+        commentDiv.style.borderRadius = '8px';
+        commentDiv.style.fontSize = '0.85rem';
+        commentDiv.style.display = 'flex';
+        commentDiv.style.flexDirection = 'column';
+        commentDiv.style.gap = '4px';
+
+        const timeStr = new Date(comment.timestamp).toLocaleString('id-ID');
+
+        commentDiv.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+            <img src="${comment.user_avatar || 'https://open.larksuite.com/static-resource/v1/37bb~no_avatar.png'}" style="width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);">
+            <span style="font-weight: 600; color: #e8e8f0; font-size: 0.8rem;">${_escapeHtml(comment.user_name)}</span>
+            <span style="font-size: 0.7rem; color: #8888a8; margin-left: auto;">${timeStr}</span>
+          </div>
+          <p style="margin: 0; color: #b8b8d0; line-height: 1.4; white-space: pre-wrap; word-break: break-word;">${_escapeHtml(comment.comment_text)}</p>
+        `;
+        listContainer.appendChild(commentDiv);
+      });
+    } else {
+      const lang = localStorage.getItem('lang') || 'id';
+      const noCommentsText = lang === 'en'
+        ? 'No discussion comments on this issue yet. Start the conversation below!'
+        : 'Belum ada diskusi untuk masalah ini. Mulai diskusi di bawah!';
+      listContainer.innerHTML = `
+        <div style="color: #8888a8; font-size: 0.8rem; text-align: center; padding: 20px 10px;">
+          ${noCommentsText}
+        </div>
+      `;
+    }
+  }
+
   function _downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1822,6 +1986,9 @@ window.OdooAnalyzer.UI = (function () {
     renderDashboard: renderDashboard,
     renderHealthGauge: renderHealthGauge,
     renderIssuesSummary: renderIssuesSummary,
+    renderUserWidget: renderUserWidget,
+    renderAdminConsole: renderAdminConsole,
+    renderComments: renderComments,
 
     // Error List
     renderErrorList: renderErrorList,

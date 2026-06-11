@@ -25,6 +25,20 @@
     </div>
   </div>
 
+  <!-- ========== Login Container ========== -->
+  <div id="login-screen" class="login-screen" style="display: flex; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0a0a1a; z-index: 9999; justify-content: center; align-items: center; font-family: 'Inter', sans-serif; padding: 20px; box-sizing: border-box;">
+    <div class="login-card" style="background: rgba(26, 26, 62, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 40px; text-align: center; max-width: 450px; width: 100%; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); backdrop-filter: blur(12px);">
+      <h1 class="login-card__title" style="color: #e8e8f0; font-size: 2.2rem; margin-bottom: 8px; font-weight: 800; background: linear-gradient(135deg, #7c5cfc, #00d4aa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">🔍 Erpura</h1>
+      <p class="login-card__subtitle" style="color: #8888a8; font-size: 0.95rem; margin-bottom: 24px;">Odoo Code Analyzer & Remediation Platform</p>
+      <div class="login-card__icon" style="font-size: 4rem; margin-bottom: 24px; animation: pulse 2s infinite;">🤖</div>
+      <p class="login-card__desc" style="color: #e8e8f0; font-size: 0.9rem; line-height: 1.5; margin-bottom: 32px;">Silakan masuk menggunakan akun Lark untuk mengakses dashboard, analisis, perbaikan, dan kolaborasi.</p>
+      <a href="/api/auth/lark" class="btn btn-primary login-btn" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; text-decoration: none; padding: 12px; font-weight: 600; border-radius: 8px; background: linear-gradient(135deg, #7c5cfc, #9d8afc); color: #fff;">
+        <span class="btn__icon">💬</span>
+        <span class="btn__label">Login with Lark</span>
+      </a>
+    </div>
+  </div>
+
   <!-- ========== Header ========== -->
   <header class="app-header" role="banner">
     <div class="app-header__left">
@@ -39,6 +53,16 @@
     </div>
 
     <div class="app-header__right">
+      <!-- User Profile Widget -->
+      <div id="user-profile-widget" style="display: none; align-items: center; gap: 10px; margin-right: 16px; background: rgba(255,255,255,0.05); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08);">
+        <img id="user-avatar" src="" alt="Avatar" style="width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2);">
+        <div style="display: flex; flex-direction: column; line-height: 1.2;">
+          <span id="user-name" style="font-size: 0.8rem; font-weight: 600; color: #e8e8f0;"></span>
+          <span id="user-role" style="font-size: 0.65rem; color: #00d4aa; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;"></span>
+        </div>
+        <button id="btn-logout" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.65rem; margin-left: 6px; border-radius: 12px;">Logout</button>
+      </div>
+
       <!-- Language Toggle Button -->
       <button class="btn-icon" id="lang-toggle-btn" aria-label="Ganti bahasa / Switch language" title="Ganti bahasa / Switch language" style="margin-right: 12px; font-weight: 600; font-size: 0.85rem; width: auto; padding: 0 10px; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
         <span id="lang-toggle-icon" aria-hidden="true">🇮🇩</span>
@@ -61,6 +85,7 @@
           <li role="none"><button class="export-menu-item" id="export-pdf" role="menuitem"><span class="export-menu-item-icon" aria-hidden="true">📄</span> Export PDF</button></li>
           <li role="none"><button class="export-menu-item" id="export-word" role="menuitem"><span class="export-menu-item-icon" aria-hidden="true">📝</span> Export Word</button></li>
           <li role="none"><button class="export-menu-item" id="export-csv-btn" role="menuitem"><span class="export-menu-item-icon" aria-hidden="true">📊</span> Export CSV</button></li>
+          <li role="none"><button class="export-menu-item" id="export-excel" role="menuitem"><span class="export-menu-item-icon" aria-hidden="true">📈</span> Export Excel</button></li>
         </ul>
       </div>
 
@@ -113,6 +138,10 @@
         <button class="nav-item disabled" id="nav-report" data-section="section-report" data-requires-analysis="true">
           <span class="nav-icon" aria-hidden="true">📄</span>
           <span class="nav-label" data-translate="nav_report">Laporan</span>
+        </button>
+        <button class="nav-item disabled" id="nav-admin" data-section="section-admin" style="display: none;">
+          <span class="nav-icon" aria-hidden="true">🔑</span>
+          <span class="nav-label">Admin Console</span>
         </button>
       </nav>
     </aside>
@@ -250,6 +279,18 @@
 
         <!-- Quick Stats -->
         <div class="quick-stats" id="quick-stats" aria-label="Statistik cepat"></div>
+
+        <!-- Issue Distribution Charts -->
+        <div class="charts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-top: 32px;">
+          <div class="card chart-card" style="padding: 20px; background: rgba(26,26,62,0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; backdrop-filter: blur(12px);">
+            <h3 class="chart-card__title" style="margin-bottom: 20px; font-size: 1rem; color: #e8e8f0; font-weight: 600;">📊 Pembagian Tingkat Keparahan</h3>
+            <div id="chart-severity-container" style="display: flex; justify-content: center; align-items: center; min-height: 220px; position: relative;"></div>
+          </div>
+          <div class="card chart-card" style="padding: 20px; background: rgba(26,26,62,0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; backdrop-filter: blur(12px);">
+            <h3 class="chart-card__title" style="margin-bottom: 20px; font-size: 1rem; color: #e8e8f0; font-weight: 600;">📊 Kategori Temuan Masalah</h3>
+            <div id="chart-category-container" style="display: flex; justify-content: center; align-items: center; min-height: 220px;"></div>
+          </div>
+        </div>
       </section>
 
       <!-- ===== Section: Business Flows ===== -->
@@ -258,16 +299,17 @@
 
         <!-- Tab Bar -->
         <div class="tab-bar" role="tablist" aria-label="Jenis visualisasi">
-          <button class="tab-bar__tab tab-bar__tab--active" id="tab-erd" role="tab" aria-selected="true" aria-controls="panel-erd">Relasi Model (ERD)</button>
-          <button class="tab-bar__tab" id="tab-state" role="tab" aria-selected="false" aria-controls="panel-state">State Machine</button>
-          <button class="tab-bar__tab" id="tab-menu" role="tab" aria-selected="false" aria-controls="panel-menu">Menu Structure</button>
+          <button class="tab-bar__tab tab-bar__tab--active flow-tab" id="tab-erd" data-tab="erd" role="tab" aria-selected="true" aria-controls="panel-erd">Relasi Model (ERD)</button>
+          <button class="tab-bar__tab flow-tab" id="tab-state" data-tab="state" role="tab" aria-selected="false" aria-controls="panel-state">State Machine</button>
+          <button class="tab-bar__tab flow-tab" id="tab-menu" data-tab="menu" role="tab" aria-selected="false" aria-controls="panel-menu">Menu Structure</button>
+          <button class="tab-bar__tab flow-tab" id="tab-dependency" data-tab="dependency" role="tab" aria-selected="false" aria-controls="panel-dependency">Dependensi Modul</button>
         </div>
 
         <!-- Controls Bar -->
         <div class="controls-bar" id="flows-controls">
           <div class="controls-bar__left">
-            <label for="model-selector" class="sr-only">Pilih model</label>
-            <select id="model-selector" class="controls-bar__select" aria-label="Pilih model untuk ditampilkan">
+            <label for="flow-model-selector" class="sr-only">Pilih model</label>
+            <select id="flow-model-selector" class="controls-bar__select" aria-label="Pilih model untuk ditampilkan">
               <option value="">-- Pilih Model --</option>
             </select>
           </div>
@@ -459,7 +501,74 @@
         </div>
       </section>
 
+      <!-- ===== Section: Admin Console ===== -->
+      <section id="section-admin" class="section" aria-labelledby="section-admin-title" style="display: none;">
+        <h2 id="section-admin-title" class="section__title">🔑 Admin Console</h2>
+        <p class="section__desc" style="color: #8888a8; margin-bottom: 24px;">Atur peran pengguna (RBAC) dan pantau audit trail operasional server.</p>
+
+        <div class="admin-grid" style="display: grid; grid-template-columns: 1fr; gap: 28px;">
+          <!-- User Management -->
+          <div class="card" style="padding: 20px; background: rgba(26,26,62,0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;">
+            <h3 style="margin-bottom: 16px; font-size: 1.1rem; color: #e8e8f0; font-weight: 600;">Manajemen Peran Pengguna</h3>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; color: #e8e8f0;">
+                <thead>
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: #8888a8;">
+                    <th style="padding: 12px 8px;">Pengguna</th>
+                    <th style="padding: 12px 8px;">Email</th>
+                    <th style="padding: 12px 8px;">Peran Aktif</th>
+                    <th style="padding: 12px 8px; text-align: right;">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-user-list">
+                  <!-- Dynamic user list -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Audit Logs -->
+          <div class="card" style="padding: 20px; background: rgba(26,26,62,0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;">
+            <h3 style="margin-bottom: 16px; font-size: 1.1rem; color: #e8e8f0; font-weight: 600;">Audit Trail Operasional</h3>
+            <div style="overflow-x: auto; max-height: 350px;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem; color: #e8e8f0;">
+                <thead>
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: #8888a8;">
+                    <th style="padding: 10px 8px; width: 150px;">Waktu</th>
+                    <th style="padding: 10px 8px; width: 120px;">Pengguna</th>
+                    <th style="padding: 10px 8px; width: 180px;">Aksi</th>
+                    <th style="padding: 10px 8px;">Detail</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-audit-logs">
+                  <!-- Dynamic audit logs -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </main>
+  </div>
+
+  <!-- ========== Collaborative Comments Drawer ========== -->
+  <div id="comments-drawer" style="display: none; position: fixed; top: 0; right: 0; width: 100vw; height: 100vh; z-index: 1000; font-family: 'Inter', sans-serif;">
+    <div id="comments-drawer-backdrop" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);"></div>
+    <div style="position: absolute; top: 0; right: 0; width: 100%; max-width: 450px; height: 100%; background: #12122a; border-left: 1px solid rgba(255,255,255,0.08); box-shadow: -4px 0 24px rgba(0,0,0,0.5); display: flex; flex-direction: column; padding: 24px; box-sizing: border-box;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 16px; margin-bottom: 16px;">
+        <h3 style="color: #e8e8f0; font-size: 1.1rem; margin: 0; font-weight: 600;">💬 Diskusi Kolaborasi</h3>
+        <button id="comments-drawer-close" style="background: none; border: none; color: #8888a8; font-size: 1.5rem; cursor: pointer; line-height: 1;">&times;</button>
+      </div>
+      <div style="flex: 1; overflow-y: auto; margin-bottom: 16px; padding-right: 4px;" id="drawer-comments-body">
+        <div id="drawer-issue-brief" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.85rem; color: #8888a8; border-left: 4px solid #7c5cfc;"></div>
+        <div id="drawer-comments-list" style="display: flex; flex-direction: column; gap: 12px;"></div>
+      </div>
+      <div style="display: flex; flex-direction: column; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
+        <textarea id="comment-input" style="width: 100%; height: 80px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #e8e8f0; padding: 10px; font-size: 0.85rem; box-sizing: border-box; resize: none;" placeholder="Tulis komentar/masukan review..."></textarea>
+        <button id="btn-submit-comment" class="btn btn-primary" style="margin-top: 10px; font-weight: 600; padding: 10px;">Kirim Komentar</button>
+      </div>
+    </div>
   </div>
 
   <!-- ========== Toast Container ========== -->
@@ -476,6 +585,9 @@
 
   <!-- html2pdf.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <!-- SheetJS Excel Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <!-- Mermaid (ES Module) -->
   <script type="module">

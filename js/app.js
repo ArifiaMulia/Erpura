@@ -253,7 +253,9 @@
     },
     selectedFlowTab: 'erd',
     selectedFlowModel: 'all',
-    selectedFixerFile: null
+    selectedFixerFile: null,
+    user: null,              // User profile from Lark
+    token: null              // JWT Token
   };
 
   // ============================================================
@@ -309,7 +311,7 @@
     }
 
     // Validate section exists
-    const validSections = ['upload', 'dashboard', 'flows', 'errors', 'fixer', 'testbed', 'report'];
+    const validSections = ['upload', 'dashboard', 'flows', 'errors', 'fixer', 'testbed', 'report', 'admin'];
     if (!validSections.includes(sectionId)) return;
 
     // Check if analysis is required for certain sections
@@ -357,6 +359,9 @@
         break;
       case 'report':
         renderReport();
+        break;
+      case 'admin':
+        renderAdmin();
         break;
     }
   }
@@ -720,48 +725,22 @@
     }
 
     // Header Export Options
-    const headerExportPdf = document.getElementById('export-pdf');
-    if (headerExportPdf) {
-      headerExportPdf.addEventListener('click', () => {
+    const headerExportExcel = document.getElementById('export-excel');
+    if (headerExportExcel) {
+      headerExportExcel.addEventListener('click', () => {
         if (!AppState.analysisResult) {
           UI.showToast('Silakan upload dan analisis file terlebih dahulu.', 'warning');
           return;
         }
         try {
-          const reportHtml = Visualizers.generateFullReport(AppState.analysisResult);
-          UI.exportToPdf(reportHtml);
+          UI.showLoading('Mengekspor ke Excel...');
+          Visualizers.exportExcel(AppState.analysisResult);
+          UI.hideLoading();
+          UI.showToast('Laporan Excel berhasil diunduh!', 'success');
         } catch (err) {
-          UI.showToast('Gagal ekspor PDF: ' + err.message, 'error');
+          UI.hideLoading();
+          UI.showToast('Gagal ekspor Excel: ' + err.message, 'error');
         }
-        exportMenu.classList.remove('active');
-      });
-    }
-
-    const headerExportWord = document.getElementById('export-word');
-    if (headerExportWord) {
-      headerExportWord.addEventListener('click', () => {
-        if (!AppState.analysisResult) {
-          UI.showToast('Silakan upload dan analisis file terlebih dahulu.', 'warning');
-          return;
-        }
-        try {
-          const reportHtml = Visualizers.generateFullReport(AppState.analysisResult);
-          UI.exportToWord(reportHtml);
-        } catch (err) {
-          UI.showToast('Gagal ekspor Word: ' + err.message, 'error');
-        }
-        exportMenu.classList.remove('active');
-      });
-    }
-
-    const headerExportCsv = document.getElementById('export-csv-btn');
-    if (headerExportCsv) {
-      headerExportCsv.addEventListener('click', () => {
-        if (!AppState.analysisResult) {
-          UI.showToast('Silakan upload dan analisis file terlebih dahulu.', 'warning');
-          return;
-        }
-        UI.exportToCsv(AppState.analysisResult.issues);
         exportMenu.classList.remove('active');
       });
     }
@@ -769,7 +748,7 @@
     // Analyze button
     const analyzeBtn = document.getElementById('btn-analyze');
     if (analyzeBtn) {
-      analyzeBtn.addEventListener('click', runAnalysis);
+      analyzeBtn.addEventListener('click', runAnalysisWithRoleCheck);
     }
 
     // Flow tabs
@@ -904,6 +883,13 @@
         viewFixForIssue(issueId);
       }
 
+      // Open comments drawer
+      const openCommentsBtn = e.target.closest('[data-action="open-comments"]');
+      if (openCommentsBtn) {
+        const issueId = openCommentsBtn.getAttribute('data-issue-id');
+        openCommentsDrawer(issueId);
+      }
+
       // Toggle error card expansion
       const errorCard = e.target.closest('.error-card-header');
       if (errorCard) {
@@ -912,7 +898,60 @@
       }
     });
 
+    // Comments Drawer Submit Comment
+    const submitCommentBtn = document.getElementById('btn-submit-comment');
+    const commentInput = document.getElementById('comment-input');
+    if (submitCommentBtn && commentInput) {
+      submitCommentBtn.addEventListener('click', async () => {
+        const commentText = commentInput.value.trim();
+        if (!commentText) {
+          UI.showToast('Komentar tidak boleh kosong.', 'warning');
+          return;
+        }
+        if (!AppState.activeIssueId) {
+          UI.showToast('Gagal mengirim komentar: ID masalah tidak ditemukan.', 'error');
+          return;
+        }
 
+        try {
+          submitCommentBtn.disabled = true;
+          commentInput.disabled = true;
+          await postComment(AppState.activeIssueId, commentText);
+          commentInput.value = '';
+          
+          // Reload comments list
+          const comments = await loadComments(AppState.activeIssueId);
+          UI.renderComments(comments);
+          UI.showToast('Komentar berhasil dikirim!', 'success');
+        } catch (err) {
+          // Toast handled by postComment
+        } finally {
+          submitCommentBtn.disabled = false;
+          commentInput.disabled = false;
+        }
+      });
+
+      // Allow Enter to submit if not Shift+Enter
+      commentInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          submitCommentBtn.click();
+        }
+      });
+    }
+
+    // Comments Drawer Close Buttons
+    const drawerCloseBtn = document.getElementById('comments-drawer-close');
+    const drawerBackdrop = document.getElementById('comments-drawer-backdrop');
+    const commentsDrawer = document.getElementById('comments-drawer');
+    if (commentsDrawer) {
+      const closeDrawer = () => {
+        commentsDrawer.style.display = 'none';
+        AppState.activeIssueId = null;
+      };
+      if (drawerCloseBtn) drawerCloseBtn.addEventListener('click', closeDrawer);
+      if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeDrawer);
+    }
   }
 
   // ============================================================
@@ -1147,6 +1186,12 @@
   // Simulated Odoo Unit Test Runner
   // ============================================================
   function runSimulatedTests() {
+    // Viewer cannot run tests
+    if (AppState.user && AppState.user.role === 'Viewer') {
+      UI.showToast('Akses ditolak: Viewer tidak diperbolehkan menjalankan test.', 'error');
+      return;
+    }
+
     const consoleEl = document.getElementById('test-console');
     if (!consoleEl) return;
 
@@ -1159,45 +1204,367 @@
     const lang = localStorage.getItem('lang') || 'id';
     UI.showToast(lang === 'en' ? 'Running Odoo test suite...' : 'Menjalankan test suite Odoo...', 'info');
 
-    const logs = [
-      "2026-06-10 23:15:00,123 1234 INFO ? odoo.tests.runner: Odoo server testing starting...",
-      "2026-06-10 23:15:00,456 1234 INFO ? odoo.modules.loading: Loading module custom_sales...",
-      "2026-06-10 23:15:01,002 1234 INFO ? odoo.tests.runner: ----------------------------------------------------",
-      "2026-06-10 23:15:01,003 1234 INFO ? odoo.tests.runner: Running test suite: odoo.addons.custom_sales.tests.test_sales",
-      "2026-06-10 23:15:01,004 1234 INFO ? odoo.tests.runner: ----------------------------------------------------",
-      "2026-06-10 23:15:01,234 1234 INFO ? odoo.tests.runner: test_01_discount_approval (odoo.addons.custom_sales.tests.test_sales.TestSalesOrder) ... ok",
-      "2026-06-10 23:15:01,543 1234 INFO ? odoo.tests.runner: test_02_workflow_state_transitions (odoo.addons.custom_sales.tests.test_sales.TestSalesOrder) ... ok",
-      "2026-06-10 23:15:01,812 1234 INFO ? odoo.tests.runner: test_03_report_generation_query (odoo.addons.custom_sales.tests.test_sales.TestSalesOrder) ... ERROR",
-      "2026-06-10 23:15:01,813 1234 ERROR ? odoo.addons.custom_sales.tests.test_sales: ERROR: test_03_report_generation_query (odoo.addons.custom_sales.tests.test_sales.TestSalesOrder)",
-      "Traceback (most recent call last):",
-      "  File \"/odoo/addons/custom_sales/tests/test_sales.py\", line 45, in test_03_report_generation_query",
-      "    self.env.cr.execute(\"SELECT * FROM sale_order WHERE id = %s\" % self.sale_order.id)",
-      "  File \"/odoo/service/db.py\", line 410, in execute",
-      "    raise psycopg2.ProgrammingError(\"SQL Injection Pattern Detected by Assertions!\")",
-      "ProgrammingError: SQL Injection Pattern Detected by Assertions!",
-      "2026-06-10 23:15:02,120 1234 INFO ? odoo.tests.runner: test_04_inventory_check_no_access (odoo.addons.custom_sales.tests.test_sales.TestSalesOrder) ... FAIL",
-      "2026-06-10 23:15:02,121 1234 ERROR ? odoo.addons.custom_sales.tests.test_sales: FAIL: test_04_inventory_check_no_access (odoo.addons.custom_sales.tests.test_sales.TestSalesOrder)",
-      "AssertionError: AccessError not raised for custom model inventory.check! Missing ir.model.access.csv.",
-      "2026-06-10 23:15:02,320 1234 INFO ? odoo.tests.runner: ----------------------------------------------------",
-      "2026-06-10 23:15:02,321 1234 INFO ? odoo.tests.runner: Ran 4 tests in 1.317s",
-      "2026-06-10 23:15:02,322 1234 INFO ? odoo.tests.runner: FAILED (failures=1, errors=1)"
-    ];
+    // Real-time SSE logs streaming from backend
+    const sse = new EventSource(`/api/testbed/run?token=${AppState.token}`);
+    
+    sse.addEventListener('test_start', (e) => {
+      const data = JSON.parse(e.data);
+      const span = document.createElement('div');
+      span.style.color = '#74b9ff';
+      span.textContent = data.message;
+      consoleEl.appendChild(span);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    });
 
-    let currentLine = 0;
-    function printNextLine() {
-      if (currentLine < logs.length) {
-        const line = logs[currentLine];
-        const span = document.createElement('div');
-        
-        if (line.includes('ERROR') || line.includes('FAILED') || line.includes('AssertionError') || line.includes('Traceback')) {
-          span.style.color = '#ff6b6b';
-        } else if (line.includes('... ok')) {
-          span.style.color = '#00ff66';
-        } else if (line.includes('INFO')) {
-          span.style.color = '#74b9ff';
-        } else {
-          span.style.color = '#e8e8f0';
+    sse.addEventListener('test_log', (e) => {
+      const data = JSON.parse(e.data);
+      const span = document.createElement('div');
+      
+      const line = data.message;
+      if (line.includes('ERROR') || line.includes('FAILED') || line.includes('FAIL') || line.includes('AssertionError') || line.includes('Traceback')) {
+        span.style.color = '#ff6b6b';
+      } else if (line.includes('... [PASS]') || line.includes('[PASS]') || line.includes('passed')) {
+        span.style.color = '#00ff66';
+      } else if (line.includes('INFO') || line.includes('Starting')) {
+        span.style.color = '#74b9ff';
+      } else {
+        span.style.color = '#e8e8f0';
+      }
+      
+      span.textContent = line;
+      consoleEl.appendChild(span);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    });
+
+    sse.addEventListener('test_end', (e) => {
+      const data = JSON.parse(e.data);
+      const span = document.createElement('div');
+      span.style.color = '#00ff66';
+      span.style.fontWeight = 'bold';
+      span.textContent = data.message;
+      consoleEl.appendChild(span);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+      
+      if (runBtn) runBtn.disabled = false;
+      sse.close();
+      
+      // Log testbed run audit
+      fetch('/api/audit-logs', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${AppState.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'Run Unit Tests', details: 'Executed unit tests in testbed. Real-time run success.' })
+      });
+    });
+
+    sse.onerror = (err) => {
+      console.error('SSE Error:', err);
+      const span = document.createElement('div');
+      span.style.color = '#ff6b6b';
+      span.textContent = '❌ Hubungan ke server terputus.';
+      consoleEl.appendChild(span);
+      if (runBtn) runBtn.disabled = false;
+      sse.close();
+    };
+  }
+
+  // Admin section fetch and display helper
+  async function renderAdmin() {
+    if (!AppState.user || AppState.user.role !== 'Admin') {
+      UI.showToast('Hanya Admin yang dapat mengakses halaman ini.', 'error');
+      navigateTo('upload');
+      return;
+    }
+
+    try {
+      UI.showLoading('Memuat data admin...');
+      
+      // Fetch users
+      const usersRes = await fetch('/api/users', {
+        headers: { 'Authorization': `Bearer ${AppState.token}` }
+      });
+      const users = await usersRes.json();
+
+      // Fetch audit logs
+      const logsRes = await fetch('/api/audit-logs', {
+        headers: { 'Authorization': `Bearer ${AppState.token}` }
+      });
+      const logs = await logsRes.json();
+
+      UI.renderAdminConsole(users, logs);
+      UI.hideLoading();
+    } catch (err) {
+      console.error('Error loading admin data:', err);
+      UI.showToast('Gagal memuat data admin: ' + err.message, 'error');
+      UI.hideLoading();
+    }
+  }
+
+  // Update user role from admin console
+  async function updateUserRole(userId, newRole) {
+    try {
+      UI.showLoading('Memperbarui peran...');
+      const response = await fetch(`/api/users/${userId}/role`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${AppState.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ role: newRole })
+      });
+      const resData = await response.json();
+      if (!response.ok) throw new Error(resData.error || 'Gagal');
+      UI.showToast('Peran berhasil diperbarui!', 'success');
+      
+      // Reload admin section
+      renderAdmin();
+    } catch (err) {
+      UI.showToast('Gagal memperbarui peran: ' + err.message, 'error');
+      UI.hideLoading();
+    }
+  }
+
+  // Collaborative Comments helpers
+  async function loadComments(issueId) {
+    try {
+      const response = await fetch(`/api/issues/${issueId}/comments`, {
+        headers: { 'Authorization': `Bearer ${AppState.token}` }
+      });
+      return await response.json();
+    } catch (err) {
+      console.error('Error loading comments:', err);
+      return [];
+    }
+  }
+
+  async function postComment(issueId, commentText) {
+    try {
+      const response = await fetch(`/api/issues/${issueId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${AppState.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ commentText })
+      });
+      const resData = await response.json();
+      if (!response.ok) throw new Error(resData.error || 'Gagal mengirim');
+      return resData;
+    } catch (err) {
+      UI.showToast('Gagal mengirim komentar: ' + err.message, 'error');
+      throw err;
+    }
+  }
+
+  // Open Comments Drawer and Load Comments
+  async function openCommentsDrawer(issueId) {
+    if (!issueId) return;
+    
+    // Find the issue
+    if (!AppState.analysisResult || !Array.isArray(AppState.analysisResult.issues)) {
+      UI.showToast('Tidak ada data analisis untuk masalah ini.', 'warning');
+      return;
+    }
+    
+    const issue = AppState.analysisResult.issues.find(i => i.id === issueId);
+    if (!issue) {
+      UI.showToast('Masalah tidak ditemukan.', 'error');
+      return;
+    }
+
+    AppState.activeIssueId = issueId;
+
+    const briefContainer = document.getElementById('drawer-issue-brief');
+    if (briefContainer) {
+      const ruleId = issue.ruleId || issue.id?.split('_')[0];
+      const lang = localStorage.getItem('lang') || 'id';
+      let title = issue.title;
+      if (lang === 'en' && window.OdooAnalyzer.RULE_TRANSLATIONS?.[ruleId]) {
+        title = window.OdooAnalyzer.RULE_TRANSLATIONS[ruleId].title;
+      }
+      briefContainer.innerHTML = `
+        <div style="font-weight:600;margin-bottom:4px;color:#e8e8f0;">${_escapeHtml(title)}</div>
+        <div style="font-size:0.75rem;color:#8888a8;">File: ${issue.file}:${issue.line}</div>
+      `;
+    }
+
+    const commentsDrawer = document.getElementById('comments-drawer');
+    if (commentsDrawer) {
+      commentsDrawer.style.display = 'flex';
+      
+      const commentInput = document.getElementById('comment-input');
+      if (commentInput) {
+        commentInput.value = '';
+        commentInput.focus();
+      }
+
+      // Load and render comments
+      try {
+        UI.renderComments([]); // Show loading/empty state first
+        const comments = await loadComments(issueId);
+        UI.renderComments(comments);
+      } catch (err) {
+        console.error('Error loading comments:', err);
+      }
+    }
+  }
+
+  function _escapeHtml(str) {
+    if (typeof str !== 'string') return '';
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+  }
+
+  // Run analysis wrapper with role checks and audit log
+  async function runAnalysisWithRoleCheck() {
+    if (AppState.user && AppState.user.role === 'Viewer') {
+      UI.showToast('Akses ditolak: Viewer tidak diperbolehkan menjalankan analisis.', 'error');
+      return;
+    }
+
+    try {
+      await runAnalysis();
+      
+      // Post audit log
+      fetch('/api/audit-logs', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${AppState.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'Run Code Analysis',
+          details: `Analyzed ${AppState.uploadedFiles.length} files. Health Score: ${AppState.analysisResult.stats.healthScore}`
+        })
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // Authentication check helper
+  async function checkAuth() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get('token');
+    if (tokenFromUrl) {
+      localStorage.setItem('erpura_token', tokenFromUrl);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    const token = localStorage.getItem('erpura_token');
+    if (!token) {
+      document.getElementById('login-screen').style.display = 'flex';
+      document.querySelector('.app-layout').style.display = 'none';
+      document.querySelector('.app-header').style.display = 'none';
+      UI.hideLoading();
+      return false;
+    }
+
+    try {
+      UI.showLoading('Memvalidasi sesi...');
+      const response = await fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        throw new Error('Sesi kedaluwarsa');
+      }
+      const user = await response.json();
+      AppState.user = user;
+      AppState.token = token;
+
+      document.getElementById('login-screen').style.display = 'none';
+      document.querySelector('.app-layout').style.display = 'grid';
+      document.querySelector('.app-header').style.display = 'flex';
+      
+      UI.renderUserWidget(user);
+
+      if (user.role === 'Admin') {
+        const navAdmin = document.getElementById('nav-admin');
+        if (navAdmin) {
+          navAdmin.style.display = 'flex';
+          navAdmin.classList.remove('disabled');
         }
+      }
+
+      if (tokenFromUrl) {
+        await fetch('/api/audit-logs', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ action: 'User Auth Success', details: 'User authenticated successfully via Lark SSO' })
+        });
+      }
+
+      UI.hideLoading();
+      return true;
+    } catch (err) {
+      console.error('Auth check error:', err);
+      localStorage.removeItem('erpura_token');
+      document.getElementById('login-screen').style.display = 'flex';
+      document.querySelector('.app-layout').style.display = 'none';
+      document.querySelector('.app-header').style.display = 'none';
+      UI.hideLoading();
+      UI.showToast('Silakan masuk kembali: ' + err.message, 'warning');
+      return false;
+    }
+  }
+
+  function initLogout() {
+    const logoutBtn = document.getElementById('btn-logout');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('erpura_token');
+        window.location.reload();
+      });
+    }
+  }
+
+  async function init() {
+    console.log('%c🔍 Erpura v1.0', 'color: #7c5cfc; font-size: 18px; font-weight: bold;');
+    console.log('%cAnalisis, Perbaikan & Live Deployment Odoo ERP', 'color: #00d4aa; font-size: 12px;');
+
+    // Check dependencies
+    const deps = ['Parsers', 'Analyzers', 'CodeFixer', 'UI', 'Visualizers', 'TestData'];
+    const missing = deps.filter(d => !OA[d]);
+    if (missing.length > 0) {
+      console.error('Missing modules:', missing.join(', '));
+      document.body.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a1a;color:#ff6b6b;font-family:Inter,sans-serif;flex-direction:column;padding:2rem;">
+          <h1 style="color:#e8e8f0;margin-bottom:1rem;">⚠️ Initialization Error</h1>
+          <p>Module yang dibutuhkan belum dimuat: <strong>${missing.join(', ')}</strong></p>
+          <p style="color:#8888a8;margin-top:0.5rem;">Pastikan semua file JavaScript telah dimuat dengan benar.</p>
+        </div>`;
+      return;
+    }
+
+    // Initialize modules
+    try {
+      initTheme();
+      initLanguage();
+      initNavigation();
+      initLogout();
+      
+      // Perform Authentication check
+      const authenticated = await checkAuth();
+      if (!authenticated) return;
+
+      UI.initFileUploader(handleFilesSelected);
+      initEventListeners();
+
+      // Start on upload section
+      navigateTo('upload');
+
+      console.log('✅ Application initialized successfully.');
+    } catch (err) {
+      console.error('Initialization error:', err);
+      UI.showToast('Gagal menginisialisasi aplikasi: ' + err.message, 'error');
+    }
+  }
         
         span.textContent = line;
         consoleEl.appendChild(span);
@@ -1264,6 +1631,10 @@
     runAnalysis,
     loadTestData,
     downloadFixedFiles,
+    updateUserRole,
+    postComment,
+    loadComments,
+    openCommentsDrawer,
   };
 
   // ============================================================

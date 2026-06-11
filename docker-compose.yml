@@ -1,13 +1,49 @@
 version: '3.9'
 
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: erpura_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: erpura_db
+      POSTGRES_USER: erpura_user
+      POSTGRES_PASSWORD: erpura_pass
+    volumes:
+      - erpura_pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: erpura_api
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      PGHOST: db
+      PGUSER: erpura_user
+      PGPASSWORD: erpura_pass
+      PGDATABASE: erpura_db
+      JWT_SECRET: erpura_secret_key_change_in_prod
+      LARK_APP_ID: cli_a87dfa8354b8d029
+      LARK_APP_SECRET: csMeQnMGbnK31eqfAW8twgSb8OJrhAqa
+    networks:
+      - internal
+      - coolify
+
   erpura:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: erpura_frontend
     restart: unless-stopped
+    depends_on:
+      - api
     networks:
+      - internal
       - coolify
     labels:
       # Traefik: HTTPS
@@ -26,5 +62,10 @@ services:
       - "traefik.http.middlewares.erpura-redirect-https.redirectscheme.scheme=https"
 
 networks:
+  internal:
+    driver: bridge
   coolify:
     external: true
+
+volumes:
+  erpura_pgdata:

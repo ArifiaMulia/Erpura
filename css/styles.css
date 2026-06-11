@@ -2727,5 +2727,132 @@ input, select, textarea {
 
 
 /* ============================================================
+   28. ERPURA ADDITIONAL CUSTOM STYLES
+   ============================================================ */
+.login-screen {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.login-card {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  transform: translateY(0);
+  transition: transform 0.3s ease;
+}
+
+.login-card:hover {
+  transform: translateY(-5px);
+}
+
+.login-btn {
+  transition: all 0.3s ease;
+}
+
+.login-btn:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 15px rgba(124, 92, 252, 0.4);
+}
+
+/* User Widget */
+.user-profile img {
+  object-fit: cover;
+}
+
+/* Comments Drawer */
+.comments-drawer-open {
+  overflow: hidden;
+}
+
+.comment-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.comment-item img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.comment-item-content {
+  flex: 1;
+}
+
+.comment-item-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 0.75rem;
+}
+
+.comment-item-user {
+  font-weight: 600;
+  color: #00d4aa;
+}
+
+.comment-item-time {
+  color: #8888a8;
+}
+
+.comment-item-text {
+  font-size: 0.8rem;
+  color: #e8e8f0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* SVG Chart details */
+.donut-segment {
+  transition: stroke-width 0.2s, stroke 0.2s;
+  cursor: pointer;
+}
+.donut-segment:hover {
+  stroke-width: 16;
+}
+
+.chart-bar-rect {
+  transition: fill 0.2s;
+  cursor: pointer;
+}
+.chart-bar-rect:hover {
+  fill: #9d8afc !important;
+}
+
+/* Admin Console UI table styles */
+#admin-user-list tr, #admin-audit-logs tr {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  transition: background 0.2s;
+}
+
+#admin-user-list tr:hover, #admin-audit-logs tr:hover {
+  background: rgba(255,255,255,0.02);
+}
+
+#admin-user-list td, #admin-audit-logs td {
+  padding: 10px 8px;
+}
+
+.admin-role-select {
+  background: #1a1a3e;
+  color: #e8e8f0;
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  outline: none;
+}
+
+.admin-role-select:focus {
+  border-color: #7c5cfc;
+}
+
+/* ============================================================
    END OF STYLESHEET
    ============================================================ */
