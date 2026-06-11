@@ -1,0 +1,30 @@
+version: '3.9'
+
+services:
+  vibeodoonix:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vibeodoonix_frontend
+    restart: unless-stopped
+    networks:
+      - coolify
+    labels:
+      # Traefik: HTTPS
+      - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
+      - "traefik.http.routers.vibeodoonix-https.rule=Host(`vibeodoonix.virtuenet.space`)"
+      - "traefik.http.routers.vibeodoonix-https.entrypoints=https"
+      - "traefik.http.routers.vibeodoonix-https.tls=true"
+      - "traefik.http.routers.vibeodoonix-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.vibeodoonix-https.service=vibeodoonix-svc"
+      - "traefik.http.services.vibeodoonix-svc.loadbalancer.server.port=80"
+      # Traefik: HTTP -> HTTPS redirect
+      - "traefik.http.routers.vibeodoonix-http.rule=Host(`vibeodoonix.virtuenet.space`)"
+      - "traefik.http.routers.vibeodoonix-http.entrypoints=http"
+      - "traefik.http.routers.vibeodoonix-http.middlewares=vibeodoonix-redirect-https"
+      - "traefik.http.middlewares.vibeodoonix-redirect-https.redirectscheme.scheme=https"
+
+networks:
+  coolify:
+    external: true

@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VibeOdoonix - Analisis, Perbaikan &amp; Live Deployment Kode Odoo ERP</title>
+  <meta name="description" content="Alat analisis kode Odoo ERP yang canggih untuk mendeteksi masalah, memperbaiki kode, memvisualisasikan alur bisnis, dan deployment otomatis (Vibe Coding).">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+</head>
+<body>
+
+  <!-- ========== Loading Overlay ========== -->
+  <div id="loading-overlay" class="loading-overlay" role="status" aria-live="polite" aria-label="Memuat aplikasi">
+    <div class="loading-overlay__content">
+      <div class="loading-overlay__spinner" aria-hidden="true">
+        <div class="loading-overlay__circle loading-overlay__circle--1"></div>
+        <div class="loading-overlay__circle loading-overlay__circle--2"></div>
+        <div class="loading-overlay__circle loading-overlay__circle--3"></div>
+      </div>
+      <p id="loading-text" class="loading-overlay__text">Memuat VibeOdoonix...</p>
+    </div>
+  </div>
+
+  <!-- ========== Header ========== -->
+  <header class="app-header" role="banner">
+    <div class="app-header__left">
+      <div class="app-header__logo" aria-hidden="true">
+        <span class="app-header__logo-icon">🔍</span>
+        <div class="app-header__titles">
+          <h1 class="app-header__title">VibeOdoonix</h1>
+          <p class="app-header__subtitle">Analisis, Perbaikan &amp; Live Deployment Odoo</p>
+        </div>
+      </div>
+      <span class="app-header__version-badge" aria-label="Versi 2.0.0">v2.0.0</span>
+    </div>
+
+    <div class="app-header__right">
+      <!-- Language Toggle Button -->
+      <button class="btn-icon" id="lang-toggle-btn" aria-label="Ganti bahasa / Switch language" title="Ganti bahasa / Switch language" style="margin-right: 12px; font-weight: 600; font-size: 0.85rem; width: auto; padding: 0 10px; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
+        <span id="lang-toggle-icon" aria-hidden="true">🇮🇩</span>
+        <span id="lang-toggle-label">ID</span>
+      </button>
+
+      <!-- Theme Toggle Button -->
+      <button class="btn-icon" id="theme-toggle-btn" aria-label="Ganti mode terang/gelap" title="Ganti mode terang/gelap" style="margin-right: 12px;">
+        <span id="theme-toggle-icon" aria-hidden="true">☀️</span>
+      </button>
+
+      <!-- Export Dropdown -->
+      <div class="export-dropdown" id="export-dropdown">
+        <button class="btn btn-secondary" id="btn-export-toggle" aria-haspopup="true" aria-expanded="false" aria-label="Opsi ekspor">
+          <span class="btn__icon" aria-hidden="true">📥</span>
+          <span class="btn__label">Export</span>
+          <span class="btn__caret" aria-hidden="true">▾</span>
+        </button>
+        <ul class="export-menu" id="export-menu" role="menu" aria-label="Format ekspor">
+          <li role="none"><button class="export-menu-item" id="export-pdf" role="menuitem"><span class="export-menu-item-icon" aria-hidden="true">📄</span> Export PDF</button></li>
+          <li role="none"><button class="export-menu-item" id="export-word" role="menuitem"><span class="export-menu-item-icon" aria-hidden="true">📝</span> Export Word</button></li>
+          <li role="none"><button class="export-menu-item" id="export-csv-btn" role="menuitem"><span class="export-menu-item-icon" aria-hidden="true">📊</span> Export CSV</button></li>
+        </ul>
+      </div>
+
+      <!-- Hamburger Menu (Mobile) -->
+      <button class="hamburger-btn" id="hamburger-toggle" aria-label="Toggle navigasi" aria-expanded="false" aria-controls="sidebar">
+        <span class="hamburger-btn__line"></span>
+        <span class="hamburger-btn__line"></span>
+        <span class="hamburger-btn__line"></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ========== App Layout ========== -->
+  <div class="app-layout">
+
+    <!-- ========== Sidebar ========== -->
+    <aside class="sidebar" id="sidebar" role="navigation" aria-label="Navigasi utama">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <span class="sidebar-brand-icon" aria-hidden="true">🔍</span>
+          <div class="sidebar-brand-text">VibeOdoonix</div>
+        </div>
+        <div class="sidebar-brand-sub">Analisis, Perbaikan &amp; Deploy</div>
+      </div>
+      <nav class="sidebar__nav">
+        <button class="nav-item active" id="nav-upload" data-section="section-upload" aria-current="page">
+          <span class="nav-icon" aria-hidden="true">📁</span>
+          <span class="nav-label" data-translate="nav_upload">Upload &amp; Analisis</span>
+        </button>
+        <button class="nav-item disabled" id="nav-dashboard" data-section="section-dashboard" data-requires-analysis="true">
+          <span class="nav-icon" aria-hidden="true">📊</span>
+          <span class="nav-label" data-translate="nav_dashboard">Dashboard</span>
+        </button>
+        <button class="nav-item disabled" id="nav-flows" data-section="section-flows" data-requires-analysis="true">
+          <span class="nav-icon" aria-hidden="true">🔄</span>
+          <span class="nav-label" data-translate="nav_flows">Business Flow</span>
+        </button>
+        <button class="nav-item disabled" id="nav-errors" data-section="section-errors" data-requires-analysis="true">
+          <span class="nav-icon" aria-hidden="true">🔴</span>
+          <span class="nav-label" data-translate="nav_errors">Masalah &amp; Error</span>
+        </button>
+        <button class="nav-item disabled" id="nav-fixer" data-section="section-fixer" data-requires-analysis="true">
+          <span class="nav-icon" aria-hidden="true">🔧</span>
+          <span class="nav-label" data-translate="nav_fixer">Perbaikan Kode</span>
+        </button>
+        <button class="nav-item" id="nav-testbed" data-section="section-testbed">
+          <span class="nav-icon" aria-hidden="true">🧪</span>
+          <span class="nav-label" data-translate="nav_testbed">Test Bed</span>
+        </button>
+        <button class="nav-item disabled" id="nav-report" data-section="section-report" data-requires-analysis="true">
+          <span class="nav-icon" aria-hidden="true">📄</span>
+          <span class="nav-label" data-translate="nav_report">Laporan</span>
+        </button>
+      </nav>
+    </aside>
+
+    <!-- ========== Main Content ========== -->
+    <main class="main-content" role="main">
+
+      <!-- ===== Section: Upload & Analisis ===== -->
+      <section id="section-upload" class="section active" aria-labelledby="section-upload-title">
+        <h2 id="section-upload-title" class="section__title" data-translate="sec_upload_title">📁 Upload &amp; Analisis Kode</h2>
+        <p class="section__description" data-translate="sec_upload_desc">Upload file Python (.py), XML (.xml), CSV (.csv), atau arsip ZIP (.zip) untuk memulai analisis kode Odoo Anda.</p>
+
+        <!-- Drop Zone -->
+        <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Area upload file, seret file atau klik untuk memilih">
+          <div class="drop-zone__icon" aria-hidden="true">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <p class="drop-zone__text" data-translate="drop_zone_text">Seret &amp; Lepas File di Sini</p>
+          <p class="drop-zone__subtext" data-translate="drop_zone_subtext">atau klik untuk memilih file</p>
+          <input type="file" id="file-input" class="drop-zone__input" multiple accept=".py,.xml,.csv,.zip,.txt" aria-label="Pilih file untuk dianalisis" hidden>
+          <div class="drop-zone__formats" aria-label="Format yang didukung">
+            <span class="drop-zone__badge">.py</span>
+            <span class="drop-zone__badge">.xml</span>
+            <span class="drop-zone__badge">.csv</span>
+            <span class="drop-zone__badge">.zip</span>
+          </div>
+        </div>
+
+        <!-- File List -->
+        <div id="file-list" class="file-list" role="list" aria-label="Daftar file yang diupload"></div>
+
+        <!-- Action Bar -->
+        <div class="action-bar" id="upload-action-bar">
+          <span class="action-bar__count" id="file-count" data-translate="file_count_selected">0 file dipilih</span>
+          <div class="action-bar__actions">
+            <button class="btn btn-ghost" id="btn-clear-files" aria-label="Hapus semua file" data-translate="btn_clear_files">Hapus Semua</button>
+            <button class="btn btn-primary btn-lg" id="btn-analyze" aria-label="Mulai analisis kode">
+              <span class="btn__icon" aria-hidden="true">🔍</span>
+              <span class="btn__label" data-translate="btn_analyze">Mulai Analisis</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Analysis Progress -->
+        <div id="analysis-progress" class="analysis-progress" hidden aria-live="polite">
+          <div class="analysis-progress__bar-track">
+            <div class="analysis-progress__bar-fill" id="progress-bar-fill" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">
+              <span class="analysis-progress__percentage" id="progress-percentage">0%</span>
+            </div>
+          </div>
+          <p class="analysis-progress__text" id="progress-text">Memulai analisis...</p>
+        </div>
+      </section>
+
+      <!-- ===== Section: Dashboard ===== -->
+      <section id="section-dashboard" class="section" aria-labelledby="section-dashboard-title">
+        <h2 id="section-dashboard-title" class="section__title" data-translate="sec_dashboard_title">📊 Dashboard Analisis</h2>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid" role="list" aria-label="Statistik kode">
+          <div class="stat-card" id="stat-modules" role="listitem">
+            <span class="stat-card__icon" aria-hidden="true">📦</span>
+            <div class="stat-card__body">
+              <span class="stat-card__value">0</span>
+              <span class="stat-card__label" data-translate="stat_modules">Total Modul</span>
+            </div>
+          </div>
+          <div class="stat-card" id="stat-models" role="listitem">
+            <span class="stat-card__icon" aria-hidden="true">🗃️</span>
+            <div class="stat-card__body">
+              <span class="stat-card__value">0</span>
+              <span class="stat-card__label" data-translate="stat_models">Total Model</span>
+            </div>
+          </div>
+          <div class="stat-card" id="stat-fields" role="listitem">
+            <span class="stat-card__icon" aria-hidden="true">📝</span>
+            <div class="stat-card__body">
+              <span class="stat-card__value">0</span>
+              <span class="stat-card__label" data-translate="stat_fields">Total Field</span>
+            </div>
+          </div>
+          <div class="stat-card" id="stat-methods" role="listitem">
+            <span class="stat-card__icon" aria-hidden="true">⚙️</span>
+            <div class="stat-card__body">
+              <span class="stat-card__value">0</span>
+              <span class="stat-card__label" data-translate="stat_methods">Total Method</span>
+            </div>
+          </div>
+          <div class="stat-card" id="stat-views" role="listitem">
+            <span class="stat-card__icon" aria-hidden="true">👁️</span>
+            <div class="stat-card__body">
+              <span class="stat-card__value">0</span>
+              <span class="stat-card__label" data-translate="stat_views">Total View</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Health Score -->
+        <div class="health-score" aria-label="Skor kesehatan kode">
+          <div class="health-score__gauge" id="health-gauge-container">
+            <svg viewBox="0 0 200 120" class="health-score__svg" aria-hidden="true">
+              <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="var(--color-surface-alt)" stroke-width="12" stroke-linecap="round"/>
+              <path id="health-gauge-arc" d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="var(--color-success)" stroke-width="12" stroke-linecap="round" stroke-dasharray="0 251" class="health-score__arc"/>
+              <text id="health-gauge-value" x="100" y="85" text-anchor="middle" class="health-score__value-text">0</text>
+              <text x="100" y="105" text-anchor="middle" class="health-score__label-text">Health Score</text>
+            </svg>
+          </div>
+          <p class="health-score__label" id="health-score-label">Belum ada data analisis</p>
+        </div>
+
+        <!-- Issues Summary -->
+        <div class="issues-grid" role="list" aria-label="Ringkasan masalah">
+          <div class="issue-card issue-card--critical" id="issues-critical" role="listitem">
+            <span class="issue-card__count">0</span>
+            <span class="issue-card__label">Critical</span>
+          </div>
+          <div class="issue-card issue-card--warning" id="issues-warning" role="listitem">
+            <span class="issue-card__count">0</span>
+            <span class="issue-card__label">Warning</span>
+          </div>
+          <div class="issue-card issue-card--info" id="issues-info" role="listitem">
+            <span class="issue-card__count">0</span>
+            <span class="issue-card__label">Info</span>
+          </div>
+        </div>
+
+        <!-- Odoo Version -->
+        <div class="odoo-version" id="odoo-version" aria-label="Versi Odoo yang terdeteksi">
+          <span class="odoo-version__badge">Versi Odoo: Belum terdeteksi</span>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="quick-stats" id="quick-stats" aria-label="Statistik cepat"></div>
+      </section>
+
+      <!-- ===== Section: Business Flows ===== -->
+      <section id="section-flows" class="section" aria-labelledby="section-flows-title">
+        <h2 id="section-flows-title" class="section__title">🔄 Business Flow &amp; Relasi</h2>
+
+        <!-- Tab Bar -->
+        <div class="tab-bar" role="tablist" aria-label="Jenis visualisasi">
+          <button class="tab-bar__tab tab-bar__tab--active" id="tab-erd" role="tab" aria-selected="true" aria-controls="panel-erd">Relasi Model (ERD)</button>
+          <button class="tab-bar__tab" id="tab-state" role="tab" aria-selected="false" aria-controls="panel-state">State Machine</button>
+          <button class="tab-bar__tab" id="tab-menu" role="tab" aria-selected="false" aria-controls="panel-menu">Menu Structure</button>
+        </div>
+
+        <!-- Controls Bar -->
+        <div class="controls-bar" id="flows-controls">
+          <div class="controls-bar__left">
+            <label for="model-selector" class="sr-only">Pilih model</label>
+            <select id="model-selector" class="controls-bar__select" aria-label="Pilih model untuk ditampilkan">
+              <option value="">-- Pilih Model --</option>
+            </select>
+          </div>
+          <div class="controls-bar__right">
+            <button class="btn btn-icon" id="btn-zoom-in" aria-label="Perbesar diagram">
+              <span aria-hidden="true">+</span>
+            </button>
+            <button class="btn btn-icon" id="btn-zoom-out" aria-label="Perkecil diagram">
+              <span aria-hidden="true">−</span>
+            </button>
+            <button class="btn btn-icon" id="btn-zoom-reset" aria-label="Reset zoom">
+              <span aria-hidden="true">↺</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Diagram Container -->
+        <div id="diagram-container" class="diagram-container" role="img" aria-label="Diagram visualisasi">
+          <p class="diagram-container__placeholder">Jalankan analisis terlebih dahulu untuk melihat diagram.</p>
+        </div>
+
+        <!-- Legend -->
+        <div class="diagram-legend" aria-label="Legenda diagram">
+          <div class="diagram-legend__item">
+            <span class="diagram-legend__color diagram-legend__color--model" aria-hidden="true"></span>
+            <span class="diagram-legend__label">Model</span>
+          </div>
+          <div class="diagram-legend__item">
+            <span class="diagram-legend__color diagram-legend__color--relation" aria-hidden="true"></span>
+            <span class="diagram-legend__label">Relasi (Many2one)</span>
+          </div>
+          <div class="diagram-legend__item">
+            <span class="diagram-legend__color diagram-legend__color--many2many" aria-hidden="true"></span>
+            <span class="diagram-legend__label">Relasi (Many2many)</span>
+          </div>
+          <div class="diagram-legend__item">
+            <span class="diagram-legend__color diagram-legend__color--inherit" aria-hidden="true"></span>
+            <span class="diagram-legend__label">Inheritance</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Section: Errors ===== -->
+      <section id="section-errors" class="section" aria-labelledby="section-errors-title">
+        <h2 id="section-errors-title" class="section__title">🔴 Masalah &amp; Error yang Ditemukan</h2>
+
+        <!-- Error Summary Stats -->
+        <div class="error-summary" id="error-summary" role="status" aria-label="Ringkasan error">
+          <p class="error-summary__text">Belum ada data analisis.</p>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar" role="search" aria-label="Filter masalah">
+          <div class="filter-bar__severity" role="group" aria-label="Filter tingkat keparahan">
+            <button class="filter-btn filter-btn--active" id="filter-all" data-severity="all" aria-pressed="true">All</button>
+            <button class="filter-btn" id="filter-critical" data-severity="critical" aria-pressed="false">Critical</button>
+            <button class="filter-btn" id="filter-warning" data-severity="warning" aria-pressed="false">Warning</button>
+            <button class="filter-btn" id="filter-info" data-severity="info" aria-pressed="false">Info</button>
+          </div>
+          <div class="filter-bar__selects">
+            <label for="filter-category" class="sr-only">Filter kategori</label>
+            <select id="filter-category" class="filter-bar__select" aria-label="Filter berdasarkan kategori">
+              <option value="">Semua Kategori</option>
+            </select>
+            <label for="filter-file" class="sr-only">Filter file</label>
+            <select id="filter-file" class="filter-bar__select" aria-label="Filter berdasarkan file">
+              <option value="">Semua File</option>
+            </select>
+          </div>
+          <div class="filter-bar__search">
+            <label for="error-search" class="sr-only">Cari masalah</label>
+            <input type="search" id="error-search" class="filter-bar__input" placeholder="Cari masalah..." aria-label="Cari masalah">
+          </div>
+        </div>
+
+        <!-- Error List -->
+        <div id="error-list" class="error-list" role="list" aria-label="Daftar masalah yang ditemukan">
+          <p class="error-list__empty">Tidak ada masalah ditemukan. Jalankan analisis terlebih dahulu.</p>
+        </div>
+      </section>
+
+      <!-- ===== Section: Code Fixer ===== -->
+      <section id="section-fixer" class="section" aria-labelledby="section-fixer-title">
+        <h2 id="section-fixer-title" class="section__title">🔧 Perbaikan Kode Otomatis</h2>
+
+        <!-- Fixer Controls -->
+        <div class="fixer-controls" id="fixer-controls">
+          <div class="fixer-controls__left">
+            <label for="fixer-file-select" class="sr-only">Pilih file untuk diperbaiki</label>
+            <select id="fixer-file-select" class="fixer-controls__select" aria-label="Pilih file untuk diperbaiki">
+              <option value="">-- Pilih File --</option>
+            </select>
+            <span class="fixer-controls__stats" id="fix-count" aria-live="polite">0 perbaikan tersedia</span>
+          </div>
+          <div class="fixer-controls__right">
+            <button class="btn btn-primary" id="btn-apply-all-fixes" aria-label="Terapkan semua perbaikan">Terapkan Semua Perbaikan</button>
+            <button class="btn btn-secondary" id="btn-download-fixed" aria-label="Download file yang diperbaiki">Download File yang Diperbaiki</button>
+          </div>
+        </div>
+
+        <!-- Split Panel -->
+        <div class="split-panel" id="fixer-split-panel">
+          <div class="split-panel__pane split-panel__pane--left">
+            <div class="split-panel__header">
+              <h3 class="split-panel__title">Kode Asli</h3>
+            </div>
+            <div class="split-panel__code" id="original-code" aria-label="Kode asli">
+              <pre><code class="language-python">// Pilih file untuk melihat kode asli</code></pre>
+            </div>
+          </div>
+          <div class="split-panel__divider" aria-hidden="true"></div>
+          <div class="split-panel__pane split-panel__pane--right">
+            <div class="split-panel__header">
+              <h3 class="split-panel__title">Kode Diperbaiki</h3>
+            </div>
+            <div class="split-panel__code" id="fixed-code" aria-label="Kode yang diperbaiki">
+              <pre><code class="language-python">// Pilih file untuk melihat kode yang diperbaiki</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fix List -->
+        <div class="fix-list" id="fix-list" role="list" aria-label="Daftar perbaikan yang tersedia">
+          <p class="fix-list__empty">Tidak ada perbaikan tersedia. Jalankan analisis terlebih dahulu.</p>
+        </div>
+      </section>
+
+      <!-- ===== Section: Test Bed ===== -->
+      <section id="section-testbed" class="section" aria-labelledby="section-testbed-title">
+        <h2 id="section-testbed-title" class="section__title" data-translate="sec_testbed_title">🧪 Test Bed - Modul Contoh</h2>
+
+        <div class="testbed-description card" aria-label="Deskripsi modul test">
+          <p data-translate="testbed_desc">Modul test ini berisi contoh kode Odoo lengkap yang mencakup berbagai skenario umum, termasuk model, view, security, dan data. Gunakan fitur ini untuk menguji kemampuan analyzer tanpa perlu mengupload file Anda sendiri.</p>
+        </div>
+
+        <div class="testbed-actions" style="margin: 1rem 0; display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn btn-primary" id="btn-load-test" aria-label="Muat data test untuk analisis">
+            <span class="btn__icon" aria-hidden="true">🧪</span>
+            <span class="btn__label" data-translate="btn_load_test">Muat Data Test</span>
+          </button>
+          <button class="btn btn-secondary" id="btn-run-tests" aria-label="Jalankan unit test Odoo" disabled>
+            <span class="btn__icon" aria-hidden="true">⚡</span>
+            <span class="btn__label" data-translate="btn_run_tests">Jalankan Unit Test</span>
+          </button>
+        </div>
+
+        <!-- Test runner console output -->
+        <div id="test-console" class="test-console" style="display:none; background:#050510; color:#00ff66; font-family:Courier New,monospace; padding:12px; border-radius:6px; border:1px solid #1a1a3e; margin:12px 0; max-height:250px; overflow-y:auto; font-size:0.85rem; line-height:1.4; white-space: pre-wrap;"></div>
+
+        <!-- File Tree -->
+        <div class="file-tree" id="test-file-tree" role="tree" aria-label="Struktur file modul test"></div>
+
+        <!-- File Preview -->
+        <div class="file-preview" id="test-file-preview" aria-label="Preview file">
+          <p class="file-preview__empty" data-translate="testbed_empty_preview">Klik file pada tree di atas untuk melihat isinya.</p>
+        </div>
+
+        <!-- Expected Results -->
+        <div class="expected-results" id="test-expected-results" aria-label="Hasil yang diharapkan"></div>
+      </section>
+
+      <!-- ===== Section: Report ===== -->
+      <section id="section-report" class="section" aria-labelledby="section-report-title">
+        <h2 id="section-report-title" class="section__title">📄 Laporan Lengkap</h2>
+
+        <!-- Export Bar -->
+        <div class="export-bar" id="report-export-bar" role="toolbar" aria-label="Opsi ekspor laporan">
+          <button class="btn btn-primary" id="btn-export-pdf" aria-label="Ekspor laporan sebagai PDF">
+            <span class="btn__icon" aria-hidden="true">📄</span>
+            <span class="btn__label">Export PDF</span>
+          </button>
+          <button class="btn btn-secondary" id="btn-export-word" aria-label="Ekspor laporan sebagai Word">
+            <span class="btn__icon" aria-hidden="true">📝</span>
+            <span class="btn__label">Export Word</span>
+          </button>
+          <button class="btn btn-secondary" id="btn-export-csv" aria-label="Ekspor laporan sebagai CSV">
+            <span class="btn__icon" aria-hidden="true">📊</span>
+            <span class="btn__label">Export CSV</span>
+          </button>
+          <button class="btn btn-secondary" id="btn-export-json" aria-label="Ekspor laporan sebagai JSON">
+            <span class="btn__icon" aria-hidden="true">📋</span>
+            <span class="btn__label">Export JSON</span>
+          </button>
+        </div>
+
+        <!-- Report Preview -->
+        <div class="report-preview" id="report-preview" aria-label="Preview laporan">
+          <p class="report-preview__empty">Belum ada laporan. Jalankan analisis terlebih dahulu untuk menghasilkan laporan.</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ========== Toast Container ========== -->
+  <div id="toast-container" class="toast-container" role="alert" aria-live="assertive" aria-atomic="true"></div>
+
+  <!-- ========== Scripts ========== -->
+  <!-- Highlight.js Core & Languages -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+
+  <!-- JSZip -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <!-- html2pdf.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <!-- Mermaid (ES Module) -->
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    window.mermaid = mermaid;
+  </script>
+
+  <!-- Application Scripts -->
+  <script src="js/parsers.js"></script>
+  <script src="js/analyzers.js"></script>
+  <script src="js/code-fixer.js"></script>
+  <script src="js/test-data.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/visualizers.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
