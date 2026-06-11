@@ -1565,62 +1565,7 @@
       UI.showToast('Gagal menginisialisasi aplikasi: ' + err.message, 'error');
     }
   }
-        
-        span.textContent = line;
-        consoleEl.appendChild(span);
-        consoleEl.scrollTop = consoleEl.scrollHeight;
-        
-        currentLine++;
-        setTimeout(printNextLine, 150);
-      } else {
-        if (runBtn) runBtn.disabled = false;
-        UI.showToast(lang === 'en' ? 'Tests execution completed.' : 'Eksekusi tes selesai.', 'warning');
-      }
-    }
 
-    printNextLine();
-  }
-
-
-
-  // ============================================================
-  // Initialization
-  // ============================================================
-  function init() {
-    console.log('%c🔍 Erpura v1.0', 'color: #7c5cfc; font-size: 18px; font-weight: bold;');
-    console.log('%cAnalisis, Perbaikan & Live Deployment Odoo ERP', 'color: #00d4aa; font-size: 12px;');
-
-    // Check dependencies
-    const deps = ['Parsers', 'Analyzers', 'CodeFixer', 'UI', 'Visualizers', 'TestData'];
-    const missing = deps.filter(d => !OA[d]);
-    if (missing.length > 0) {
-      console.error('Missing modules:', missing.join(', '));
-      document.body.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a1a;color:#ff6b6b;font-family:Inter,sans-serif;flex-direction:column;padding:2rem;">
-          <h1 style="color:#e8e8f0;margin-bottom:1rem;">⚠️ Initialization Error</h1>
-          <p>Module yang dibutuhkan belum dimuat: <strong>${missing.join(', ')}</strong></p>
-          <p style="color:#8888a8;margin-top:0.5rem;">Pastikan semua file JavaScript telah dimuat dengan benar.</p>
-        </div>`;
-      return;
-    }
-
-    // Initialize modules
-    try {
-      initTheme();
-      initLanguage();
-      initNavigation();
-      UI.initFileUploader(handleFilesSelected);
-      initEventListeners();
-
-      // Start on upload section
-      navigateTo('upload');
-
-      console.log('✅ Application initialized successfully.');
-    } catch (err) {
-      console.error('Initialization error:', err);
-      UI.showToast('Gagal menginisialisasi aplikasi: ' + err.message, 'error');
-    }
-  }
 
   // ============================================================
   // Expose app controller globally for debugging
