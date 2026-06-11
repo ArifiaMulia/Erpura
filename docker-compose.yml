@@ -1,7 +1,7 @@
 version: '3.9'
 
 services:
-  db:
+  erpura_db:
     image: postgres:15-alpine
     container_name: erpura_db
     restart: unless-stopped
@@ -21,9 +21,9 @@ services:
     container_name: erpura_api
     restart: unless-stopped
     depends_on:
-      - db
+      - erpura_db
     environment:
-      PGHOST: db
+      PGHOST: erpura_db
       PGUSER: erpura_user
       PGPASSWORD: erpura_pass
       PGDATABASE: erpura_db

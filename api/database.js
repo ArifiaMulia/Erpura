@@ -2,7 +2,7 @@ const { Pool } = require('pg');
 require('dotenv').config();
 
 const pool = new Pool({
-  host: process.env.PGHOST || 'db',
+  host: process.env.PGHOST || 'erpura_db',
   user: process.env.PGUSER || 'erpura_user',
   password: process.env.PGPASSWORD || 'erpura_pass',
   database: process.env.PGDATABASE || 'erpura_db',
