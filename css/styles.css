@@ -242,7 +242,7 @@ input, select, textarea {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  transition: transform var(--transition-base);
+  transition: width 0.3s ease, transform var(--transition-base);
 }
 
 .main-content {
@@ -251,6 +251,7 @@ input, select, textarea {
   max-width: var(--content-max-width);
   overflow-y: auto;
   min-height: 100vh;
+  transition: margin-left 0.3s ease;
 }
 
 
@@ -271,6 +272,7 @@ input, select, textarea {
   z-index: var(--z-header);
   gap: var(--space-4);
   margin-left: var(--sidebar-width);
+  transition: margin-left 0.3s ease;
 }
 
 .header-logo {
@@ -2033,6 +2035,10 @@ input, select, textarea {
   transition: background var(--transition-fast);
   color: var(--text-primary);
   font-size: var(--font-size-sm);
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
 }
 
 .export-menu-item:hover {
@@ -2851,6 +2857,65 @@ input, select, textarea {
 
 .admin-role-select:focus {
   border-color: #7c5cfc;
+}
+
+/* Sidebar Toggle button styling */
+.btn-sidebar-toggle {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 18px;
+  margin-right: 12px;
+  padding: 0;
+  outline: none;
+}
+
+.btn-sidebar-toggle:hover {
+  background: rgba(124, 92, 252, 0.1);
+  border-color: var(--color-primary);
+}
+
+/* Sidebar Collapse Desktop Mode */
+@media (min-width: 768px) {
+  body.sidebar-collapsed {
+    --sidebar-width: 64px;
+  }
+
+  body.sidebar-collapsed .sidebar-brand-text,
+  body.sidebar-collapsed .sidebar-brand-sub,
+  body.sidebar-collapsed .nav-label {
+    display: none !important;
+  }
+
+  body.sidebar-collapsed .sidebar-header {
+    padding: var(--space-4) 0;
+    text-align: center;
+  }
+
+  body.sidebar-collapsed .sidebar-brand {
+    justify-content: center;
+    gap: 0;
+  }
+
+  body.sidebar-collapsed .nav-item {
+    justify-content: center;
+    padding: var(--space-3) 0;
+    gap: 0;
+  }
+
+  body.sidebar-collapsed .nav-icon {
+    margin-right: 0;
+    width: auto;
+    text-align: center;
+  }
 }
 
 /* ============================================================

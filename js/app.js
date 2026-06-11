@@ -1524,6 +1524,21 @@
     }
   }
 
+  function initSidebarToggle() {
+    const toggleBtn = document.getElementById('sidebar-toggle');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        document.body.classList.toggle('sidebar-collapsed');
+        // Re-render Mermaid diagrams to fit new width
+        if (AppState.analysisResult && AppState.currentSection === 'flows') {
+          setTimeout(() => {
+            renderFlows();
+          }, 300); // Wait for transition
+        }
+      });
+    }
+  }
+
   async function init() {
     console.log('%c🔍 Erpura v1.0', 'color: #7c5cfc; font-size: 18px; font-weight: bold;');
     console.log('%cAnalisis, Perbaikan & Live Deployment Odoo ERP', 'color: #00d4aa; font-size: 12px;');
@@ -1547,6 +1562,7 @@
       initTheme();
       initLanguage();
       initNavigation();
+      initSidebarToggle();
       initLogout();
       
       // Perform Authentication check
