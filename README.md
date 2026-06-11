@@ -1,6 +1,6 @@
-# 🔍 VibeOdoonix — Odoo Code Analyzer & Remediation Platform
+# 🔍 Erpura — Odoo Code Analyzer & Remediation Platform
 
-**VibeOdoonix** is a premium, browser-based Odoo ERP code analysis tool that helps developers and business stakeholders detect security vulnerabilities, deprecated patterns, performance issues, and bad practices in Odoo modules.
+**Erpura** is a premium, browser-based Odoo ERP code analysis tool that helps developers and business stakeholders detect security vulnerabilities, deprecated patterns, performance issues, and bad practices in Odoo modules.
 
 ## ✨ Features
 
@@ -30,8 +30,8 @@ Then open **http://localhost:8000** in your browser.
 
 ```bash
 # Build and run with Docker
-docker build -t vibeodoonix .
-docker run -d -p 80:80 vibeodoonix
+docker build -t erpura .
+docker run -d -p 80:80 erpura
 
 # Or with Docker Compose (Coolify/Traefik)
 docker-compose up -d
@@ -41,7 +41,7 @@ docker-compose up -d
 
 This app is designed to deploy on **Coolify** with Traefik reverse proxy and automatic Let's Encrypt SSL.
 
-Domain: `https://vibeodoonix.virtuenet.space`
+Domain: `https://erpura.virtuenet.space`
 
 ## 🎨 Design
 

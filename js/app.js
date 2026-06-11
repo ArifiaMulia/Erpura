@@ -1220,7 +1220,7 @@
   // Initialization
   // ============================================================
   function init() {
-    console.log('%c🔍 VibeOdoonix v1.0', 'color: #7c5cfc; font-size: 18px; font-weight: bold;');
+    console.log('%c🔍 Erpura v1.0', 'color: #7c5cfc; font-size: 18px; font-weight: bold;');
     console.log('%cAnalisis, Perbaikan & Live Deployment Odoo ERP', 'color: #00d4aa; font-size: 12px;');
 
     // Check dependencies
