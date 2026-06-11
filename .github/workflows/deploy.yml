@@ -1,0 +1,16 @@
+name: Deploy Erpura to Coolify
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Trigger Coolify Deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Webhook
+        run: |
+          curl --fail -i -X GET "https://coolify.virtuenet.space/api/v1/deploy?uuid=${{ secrets.COOLIFY_RESOURCE_UUID }}&force=true" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
