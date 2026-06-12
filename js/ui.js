@@ -207,21 +207,32 @@ window.OdooAnalyzer.UI = (function () {
         const ext = _getExtension(file.name);
 
         if (!VALID_EXTENSIONS.includes(ext)) {
+          showToast(`File "${file.name}" ditolak: Format tidak didukung.`, 'error');
           continue; // Skip invalid extensions
         }
 
-        if (ext === '.zip') {
-          // Extract ZIP using JSZip
-          await _extractZip(file);
-        } else {
-          // Read text file
-          const content = await _readFileAsText(file);
-          _files.push({
-            name: file.name,
-            path: file.name,
-            type: ext.replace('.', ''),
-            content: content,
-          });
+        if (file.size > 10 * 1024 * 1024) {
+          showToast(`File "${file.name}" ditolak: Ukuran melebihi batas 10MB.`, 'error');
+          continue; // Skip file larger than 10MB
+        }
+
+        try {
+          if (ext === '.zip') {
+            // Extract ZIP using JSZip
+            await _extractZip(file);
+          } else {
+            // Read text file
+            const content = await _readFileAsText(file);
+            _files.push({
+              name: file.name,
+              path: file.name,
+              type: ext.replace('.', ''),
+              content: content,
+            });
+          }
+        } catch (innerErr) {
+          console.error(`[UI] Error reading file ${file.name}:`, innerErr);
+          showToast(`Gagal membaca "${file.name}": ${innerErr.message}`, 'error');
         }
       }
 
@@ -263,13 +274,18 @@ window.OdooAnalyzer.UI = (function () {
         const ext = _getExtension(entryName);
         // Filter inner files by valid extension (excluding .zip to avoid recursion)
         if (['.py', '.xml', '.csv', '.txt'].includes(ext)) {
-          const content = await entry.async('string');
-          _files.push({
-            name: entryName.split('/').pop() || entryName,
-            path: entryName,
-            type: ext.replace('.', ''),
-            content: content,
-          });
+          try {
+            const content = await entry.async('string');
+            _files.push({
+              name: entryName.split('/').pop() || entryName,
+              path: entryName,
+              type: ext.replace('.', ''),
+              content: content,
+            });
+          } catch (innerErr) {
+            console.error(`[UI] Error extracting inner file ${entryName}:`, innerErr);
+            showToast(`Gagal mengekstrak "${entryName}": ${innerErr.message}`, 'error');
+          }
         }
       }
     } catch (err) {
@@ -279,10 +295,36 @@ window.OdooAnalyzer.UI = (function () {
   }
 
   /**
-   * Render the list of uploaded files in #file-list.
+   * Render the list of uploaded files in #file-list or #upload-workspace.
    */
   function renderFileList() {
     const fileListEl = document.getElementById('file-list');
+    const uploadWorkspace = document.getElementById('upload-workspace');
+    const uploadFileTree = document.getElementById('upload-file-tree');
+    const uploadFilePreview = document.getElementById('upload-file-preview');
+
+    if (uploadWorkspace && uploadFileTree && uploadFilePreview) {
+      if (_files.length === 0) {
+        uploadWorkspace.style.display = 'none';
+        if (fileListEl) {
+          fileListEl.style.display = 'block';
+          fileListEl.innerHTML = '<div class="empty-state"><span class="empty-icon">📂</span><p>Belum ada file yang diunggah.</p></div>';
+        }
+        return;
+      }
+
+      if (fileListEl) fileListEl.style.display = 'none';
+      uploadWorkspace.style.display = 'grid';
+
+      renderFileTree('upload-file-tree', _files);
+
+      // Keep preview placeholder empty/reset
+      uploadFilePreview.innerHTML = `
+        <p class="file-preview__empty" style="color: var(--text-secondary); margin: auto; text-align: center;">Klik file pada tree untuk melihat isinya.</p>
+      `;
+      return;
+    }
+
     if (!fileListEl) return;
 
     fileListEl.innerHTML = '';
@@ -483,7 +525,103 @@ window.OdooAnalyzer.UI = (function () {
       };
 
       const quickStatsEl = document.getElementById('quick-stats');
-      if (quickStatsEl && stats.issuesByCategory) {
+      if (quickStatsEl) {
+        quickStatsEl.style.display = 'none';
+      }
+
+      // Render Severity Donut Chart
+      const chartSeverityEl = document.getElementById('chart-severity-container');
+      if (chartSeverityEl) {
+        chartSeverityEl.innerHTML = '';
+        
+        let critical = 0, warning = 0, info = 0;
+        if (stats.issues) {
+          critical = stats.issues.filter(i => i.severity === 'critical' || i.severity === 'error').length;
+          warning = stats.issues.filter(i => i.severity === 'warning').length;
+          info = stats.issues.filter(i => i.severity === 'info').length;
+        } else if (stats.issuesBySeverity) {
+          critical = stats.issuesBySeverity.critical || 0;
+          warning = stats.issuesBySeverity.warning || 0;
+          info = stats.issuesBySeverity.info || 0;
+        }
+
+        const total = critical + warning + info;
+        
+        if (total === 0) {
+          const emptyText = lang === 'en' ? 'No issues detected' : 'Tidak ada masalah terdeteksi';
+          chartSeverityEl.innerHTML = `<div style="color:var(--text-secondary); font-size:0.9rem;">${emptyText}</div>`;
+        } else {
+          const pCrit = critical / total;
+          const pWarn = warning / total;
+          const pInfo = info / total;
+
+          const cCrit = 314.159 * pCrit;
+          const cWarn = 314.159 * pWarn;
+          const cInfo = 314.159 * pInfo;
+
+          const offsetCrit = 0;
+          const offsetWarn = -cCrit;
+          const offsetInfo = -(cCrit + cWarn);
+
+          chartSeverityEl.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; width:100%;">
+              <svg width="180" height="180" viewBox="0 0 200 200">
+                <!-- Background track -->
+                <circle cx="100" cy="100" r="50" fill="transparent" stroke="rgba(255,255,255,0.03)" stroke-width="14"></circle>
+                <!-- Critical Segment -->
+                ${critical > 0 ? `
+                  <circle cx="100" cy="100" r="50" fill="transparent" stroke="#ff6b6b" stroke-width="14" 
+                    stroke-dasharray="${cCrit} 314.159" stroke-dashoffset="${offsetCrit}" 
+                    transform="rotate(-90 100 100)" style="cursor:pointer; transition: stroke-width 0.2s;"
+                    class="donut-segment" data-severity="critical" title="Critical: ${critical}">
+                  </circle>
+                ` : ''}
+                <!-- Warning Segment -->
+                ${warning > 0 ? `
+                  <circle cx="100" cy="100" r="50" fill="transparent" stroke="#ffc048" stroke-width="14" 
+                    stroke-dasharray="${cWarn} 314.159" stroke-dashoffset="${offsetWarn}" 
+                    transform="rotate(-90 100 100)" style="cursor:pointer; transition: stroke-width 0.2s;"
+                    class="donut-segment" data-severity="warning" title="Warning: ${warning}">
+                  </circle>
+                ` : ''}
+                <!-- Info Segment -->
+                ${info > 0 ? `
+                  <circle cx="100" cy="100" r="50" fill="transparent" stroke="#74b9ff" stroke-width="14" 
+                    stroke-dasharray="${cInfo} 314.159" stroke-dashoffset="${offsetInfo}" 
+                    transform="rotate(-90 100 100)" style="cursor:pointer; transition: stroke-width 0.2s;"
+                    class="donut-segment" data-severity="info" title="Info: ${info}">
+                  </circle>
+                ` : ''}
+                <!-- Center Text -->
+                <text x="100" y="98" text-anchor="middle" fill="#e8e8f0" font-size="22" font-family="Inter, sans-serif" font-weight="700">${total}</text>
+                <text x="100" y="118" text-anchor="middle" fill="#8888a8" font-size="10" font-family="Inter, sans-serif" font-weight="600" letter-spacing="1">TEMUAN</text>
+              </svg>
+              <div class="donut-legend" style="display:flex; justify-content:center; gap:12px; font-size:0.8rem; margin-top:16px; flex-wrap:wrap; color:#e8e8f0;">
+                <span class="legend-item" style="display:flex; align-items:center; gap:4px; cursor:pointer;" data-severity="critical"><span style="width:8px; height:8px; background:#ff6b6b; border-radius:50%; display:inline-block;"></span> Critical (${critical})</span>
+                <span class="legend-item" style="display:flex; align-items:center; gap:4px; cursor:pointer;" data-severity="warning"><span style="width:8px; height:8px; background:#ffc048; border-radius:50%; display:inline-block;"></span> Warning (${warning})</span>
+                <span class="legend-item" style="display:flex; align-items:center; gap:4px; cursor:pointer;" data-severity="info"><span style="width:8px; height:8px; background:#74b9ff; border-radius:50%; display:inline-block;"></span> Info (${info})</span>
+              </div>
+            </div>
+          `;
+
+          // Add click handlers
+          chartSeverityEl.querySelectorAll('.donut-segment, .legend-item').forEach(el => {
+            el.addEventListener('click', () => {
+              const severity = el.getAttribute('data-severity');
+              if (severity && window.OdooAnalyzer.App) {
+                window.OdooAnalyzer.App.state.filters.severity = severity;
+                window.OdooAnalyzer.App.navigateTo('errors');
+              }
+            });
+          });
+        }
+      }
+
+      // Render Category Bar Chart
+      const chartCategoryEl = document.getElementById('chart-category-container');
+      if (chartCategoryEl && stats.issuesByCategory) {
+        chartCategoryEl.innerHTML = '';
+        
         const categories = Object.keys(stats.issuesByCategory);
         const maxVal = Math.max(...Object.values(stats.issuesByCategory), 1);
         
@@ -501,28 +639,37 @@ window.OdooAnalyzer.UI = (function () {
           const color = catColors[cat] || '#7c5cfc';
 
           svgRows += `
-            <text x="10" y="${y + 13}" fill="#8888a8" font-size="11" font-family="Inter, sans-serif" font-weight="500">${_escapeHtml(label)}</text>
-            <rect x="${barStart}" y="${y}" width="${barMaxWidth}" height="16" rx="4" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.05)" stroke-width="1" />
-            <rect x="${barStart}" y="${y}" width="${barWidth}" height="16" rx="4" fill="${color}">
-              <animate attributeName="width" from="0" to="${barWidth}" dur="0.8s" fill="freeze" />
-            </rect>
-            <text x="${barStart + barWidth + 8}" y="${y + 12}" fill="#e8e8f0" font-size="11" font-family="Inter, sans-serif" font-weight="600">${val}</text>
+            <g class="category-bar-group" data-category="${cat}" style="cursor:pointer;">
+              <text x="10" y="${y + 13}" fill="#8888a8" font-size="11" font-family="Inter, sans-serif" font-weight="500">${_escapeHtml(label)}</text>
+              <rect x="${barStart}" y="${y}" width="${barMaxWidth}" height="16" rx="4" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.05)" stroke-width="1" />
+              <rect x="${barStart}" y="${y}" width="${barWidth}" height="16" rx="4" fill="${color}">
+                <animate attributeName="width" from="0" to="${barWidth}" dur="0.8s" fill="freeze" />
+              </rect>
+              <text x="${barStart + barWidth + 8}" y="${y + 12}" fill="#e8e8f0" font-size="11" font-family="Inter, sans-serif" font-weight="600">${val}</text>
+            </g>
           `;
         });
 
         const svgHeight = categories.length * rowHeight + 30;
-        const chartTitle = lang === 'en' ? 'Issues by Category' : 'Masalah per Kategori';
 
-        quickStatsEl.innerHTML = `
-          <div class="card" style="margin-top: 1.5rem; background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: var(--radius-xl); padding: var(--space-4);">
-            <h3 style="margin-bottom: 1rem; font-size: 1.05rem; color: var(--text-primary); font-weight: 600;">${chartTitle}</h3>
-            <div style="width: 100%; overflow-x: auto;">
-              <svg width="100%" height="${svgHeight}" viewBox="0 0 ${chartWidth} ${svgHeight}" preserveAspectRatio="xMinYMin meet" style="min-width: 450px;">
-                ${svgRows}
-              </svg>
-            </div>
+        chartCategoryEl.innerHTML = `
+          <div style="width: 100%; overflow-x: auto;">
+            <svg width="100%" height="${svgHeight}" viewBox="0 0 ${chartWidth} ${svgHeight}" preserveAspectRatio="xMinYMin meet" style="min-width: 450px;">
+              ${svgRows}
+            </svg>
           </div>
         `;
+
+        // Add click handlers for category bars
+        chartCategoryEl.querySelectorAll('.category-bar-group').forEach(group => {
+          group.addEventListener('click', () => {
+            const category = group.getAttribute('data-category');
+            if (category && window.OdooAnalyzer.App) {
+              window.OdooAnalyzer.App.state.filters.category = category;
+              window.OdooAnalyzer.App.navigateTo('errors');
+            }
+          });
+        });
       }
     } catch (err) {
       console.error('[UI] renderDashboard error:', err);
@@ -1237,7 +1384,8 @@ window.OdooAnalyzer.UI = (function () {
       });
 
       _container.innerHTML = '';
-      const treeHtml = _buildTreeHtml(tree, 0);
+      const isUploadTree = _container.id === 'upload-file-tree';
+      const treeHtml = _buildTreeHtml(tree, 0, isUploadTree);
       _container.innerHTML = treeHtml;
 
       // Attach click handlers for folders and files
@@ -1248,15 +1396,35 @@ window.OdooAnalyzer.UI = (function () {
         });
       });
 
+      const previewId = isUploadTree ? 'upload-file-preview' : 'test-file-preview';
+
       _container.querySelectorAll('.tree-file').forEach(fileNode => {
-        fileNode.addEventListener('click', () => {
+        fileNode.addEventListener('click', (e) => {
+          if (e.target.classList.contains('tree-file-remove')) return;
+
           const filePath = fileNode.getAttribute('data-path');
           const file = _files_arr.find(f => (f.path || f.name) === filePath);
           if (file) {
-            _showFilePreview(file);
+            _showFilePreview(file, previewId);
           }
         });
       });
+
+      if (isUploadTree) {
+        _container.querySelectorAll('.tree-file-remove').forEach(removeBtn => {
+          removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const filePath = removeBtn.getAttribute('data-path');
+            const fileIdx = _files.findIndex(f => (f.path || f.name) === filePath);
+            if (fileIdx !== -1) {
+              _files.splice(fileIdx, 1);
+              renderFileList();
+              _updateFileCount();
+              if (_onFilesChanged) _onFilesChanged(_files);
+            }
+          });
+        });
+      }
     } catch (err) {
       console.error('[UI] renderFileTree error:', err);
     }
@@ -1266,10 +1434,11 @@ window.OdooAnalyzer.UI = (function () {
    * Recursively build HTML for the file tree.
    * @param {Object} node
    * @param {number} depth
+   * @param {boolean} isUploadTree
    * @returns {string}
    * @private
    */
-  function _buildTreeHtml(node, depth) {
+  function _buildTreeHtml(node, depth, isUploadTree) {
     let html = '';
     const indent = depth * 16;
 
@@ -1290,9 +1459,18 @@ window.OdooAnalyzer.UI = (function () {
         const file = value.__file;
         const ext = '.' + (file.type || '');
         const icon = FILE_ICONS[ext] || '📄';
-        html += `<div class="tree-file" data-path="${_escapeHtml(file.path || file.name)}" style="padding-left: ${indent + 16}px">
-          <span class="tree-icon">${icon}</span>
-          <span class="tree-name">${_escapeHtml(file.name)}</span>
+        
+        let removeHtml = '';
+        if (isUploadTree) {
+          removeHtml = `<button class="tree-file-remove" data-path="${_escapeHtml(file.path || file.name)}" title="Hapus file" style="background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 0 4px; font-weight: bold; margin-left: 8px; font-size: 1.1rem; line-height: 1;">&times;</button>`;
+        }
+
+        html += `<div class="tree-file" data-path="${_escapeHtml(file.path || file.name)}" style="padding-left: ${indent + 16}px; display: flex; align-items: center; justify-content: space-between; width: 100%; box-sizing: border-box;">
+          <span style="display: flex; align-items: center; gap: var(--space-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            <span class="tree-icon">${icon}</span>
+            <span class="tree-name">${_escapeHtml(file.name)}</span>
+          </span>
+          ${removeHtml}
         </div>`;
       } else {
         // It's a folder
@@ -1302,7 +1480,7 @@ window.OdooAnalyzer.UI = (function () {
             <span class="tree-name">${_escapeHtml(key)}</span>
           </div>
           <div class="tree-folder-children">
-            ${_buildTreeHtml(value, depth + 1)}
+            ${_buildTreeHtml(value, depth + 1, isUploadTree)}
           </div>
         </div>`;
       }
@@ -1314,16 +1492,18 @@ window.OdooAnalyzer.UI = (function () {
   /**
    * Show a file's content in the preview area.
    * @param {Object} file
+   * @param {string} [previewId]
    * @private
    */
-  function _showFilePreview(file) {
-    const preview = document.getElementById('file-preview');
+  function _showFilePreview(file, previewId) {
+    const targetPreviewId = previewId || 'test-file-preview';
+    const preview = document.getElementById(targetPreviewId);
     if (!preview) return;
 
     const langMap = { py: 'python', xml: 'xml', csv: 'plaintext', txt: 'plaintext' };
     const language = langMap[file.type] || 'plaintext';
 
-    renderCodeViewer('file-preview', file.content, language, []);
+    renderCodeViewer(targetPreviewId, file.content, language, []);
   }
 
   // ============================================================

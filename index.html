@@ -178,7 +178,16 @@
         </div>
 
         <!-- File List -->
-        <div id="file-list" class="file-list" role="list" aria-label="Daftar file yang diupload"></div>
+        <div id="file-list" class="file-list" role="list" aria-label="Daftar file yang diupload" style="display: none;"></div>
+
+        <!-- Upload Workspace -->
+        <div id="upload-workspace" class="upload-workspace" style="display: none; grid-template-columns: 300px 1fr; gap: 20px; margin-top: 20px; height: 500px; margin-bottom: 20px;">
+          <div id="upload-file-tree" class="file-tree" role="tree" aria-label="Struktur file terunggah" style="background: var(--bg-surface); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: var(--space-4); max-height: 100%; overflow-y: auto;"></div>
+          <div id="upload-file-preview" class="file-preview" aria-label="Preview file terunggah" style="background: var(--bg-surface); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: var(--space-4); max-height: 100%; overflow-y: auto; display: flex; flex-direction: column;">
+            <p class="file-preview__empty" style="color: var(--text-secondary); margin: auto; text-align: center;">Klik file pada tree untuk melihat isinya.</p>
+          </div>
+        </div>
+
 
         <!-- Action Bar -->
         <div class="action-bar" id="upload-action-bar">

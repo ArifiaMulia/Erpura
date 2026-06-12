@@ -419,6 +419,9 @@
             return;
           }
           break;
+        case 'dependency':
+          mermaidCode = Visualizers.generateModuleDependencyGraph(modules);
+          break;
       }
 
       if (mermaidCode) {
@@ -452,11 +455,27 @@
     if (!AppState.analysisResult) return;
     const { issues } = AppState.analysisResult;
 
+    // Sync severity filter buttons state
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      const sev = btn.getAttribute('data-severity');
+      if (sev === AppState.filters.severity) {
+        btn.classList.add('filter-btn--active');
+        btn.setAttribute('aria-pressed', 'true');
+      } else {
+        btn.classList.remove('filter-btn--active');
+        btn.setAttribute('aria-pressed', 'false');
+      }
+    });
+
     // Apply filters
     let filtered = [...issues];
 
     if (AppState.filters.severity !== 'all') {
-      filtered = filtered.filter(i => i.severity === AppState.filters.severity);
+      if (AppState.filters.severity === 'critical') {
+        filtered = filtered.filter(i => i.severity === 'critical' || i.severity === 'error');
+      } else {
+        filtered = filtered.filter(i => i.severity === AppState.filters.severity);
+      }
     }
     if (AppState.filters.category !== 'all') {
       filtered = filtered.filter(i => i.category === AppState.filters.category);
@@ -475,6 +494,16 @@
 
     UI.renderErrorList(filtered, AppState.filters);
     populateErrorFilters();
+
+    // Sync dropdown values
+    const catFilter = document.getElementById('filter-category');
+    if (catFilter) catFilter.value = AppState.filters.category;
+
+    const fileFilter = document.getElementById('filter-file');
+    if (fileFilter) fileFilter.value = AppState.filters.file;
+
+    const searchBox = document.getElementById('error-search');
+    if (searchBox) searchBox.value = AppState.filters.search;
   }
 
   function populateErrorFilters() {
@@ -602,7 +631,7 @@
     if (fileCount) {
       fileCount.textContent = `${files.length} file siap dianalisis`;
     }
-    UI.renderFileTree(files);
+    UI.renderFileTree('upload-file-tree', files);
 
     // Enable analyze button
     const analyzeBtn = document.getElementById('btn-analyze');
@@ -769,13 +798,19 @@
     }
 
     // Error filters
-    const severityFilter = document.getElementById('filter-severity');
-    if (severityFilter) {
-      severityFilter.addEventListener('change', (e) => {
-        AppState.filters.severity = e.target.value;
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => {
+          b.classList.remove('filter-btn--active');
+          b.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('filter-btn--active');
+        btn.setAttribute('aria-pressed', 'true');
+        
+        AppState.filters.severity = btn.getAttribute('data-severity');
         renderErrors();
       });
-    }
+    });
 
     const categoryFilter = document.getElementById('filter-category');
     if (categoryFilter) {
@@ -963,7 +998,7 @@
       UI.showLoading(lang === 'en' ? 'Loading test data...' : 'Memuat data test...');
       const testFiles = TestData.getTestFiles();
       AppState.uploadedFiles = testFiles;
-      UI.renderFileTree(testFiles);
+      UI.renderFileTree('test-file-tree', testFiles);
 
       const fileCount = document.getElementById('file-count');
       if (fileCount) {

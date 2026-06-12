@@ -1590,9 +1590,62 @@ input, select, textarea {
   transition: transform var(--transition-fast);
 }
 
+
 .tree-chevron.open {
   transform: rotate(90deg);
 }
+
+.upload-workspace {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 20px;
+  margin-top: 20px;
+  height: 500px;
+  margin-bottom: 20px;
+}
+
+.upload-workspace .file-tree {
+  max-height: 100%;
+  overflow-y: auto;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  padding: var(--space-4);
+}
+
+.upload-workspace .file-preview {
+  max-height: 100%;
+  overflow-y: auto;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-file-remove {
+  opacity: 0.6;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.tree-file-remove:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+@media (max-width: 768px) {
+  .upload-workspace {
+    grid-template-columns: 1fr;
+    height: auto;
+    max-height: none;
+  }
+  .upload-workspace .file-tree,
+  .upload-workspace .file-preview {
+    max-height: 300px;
+  }
+}
+
 
 
 /* ============================================================
